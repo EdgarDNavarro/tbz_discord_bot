@@ -1,0 +1,24 @@
+{
+  "name": "bot-dolar",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node ./index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@discordjs/voice": "^0.16.1",
+    "@vreden/youtube_scraper": "^1.2.7",
+    "axios": "^1.6.7",
+    "consulta-dolar-venezuela": "^1.1.0",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.2.0",
+    "libsodium-wrappers": "^0.7.15",
+    "youtube-search-api": "^1.2.1"
+  }
+}
