@@ -11,8 +11,9 @@ const path = require('path');
 const fs = require('fs');
 const { ytmp3 } = require('@vreden/youtube_scraper');
 const { default: axios } = require('axios')
+const MAX_LENGTH = 3000
+const prompt = "Eres un bot de discord llamado Tbz bot, estas aqui para ayudar a los integrantes del grupo, siempre responde en español. "
 
-// Función para descargar el audio de YouTube y guardar en el sistema de archivos
 async function downloadAudioFromYouTube(url, filePath) {
     try {
             const quality = "128"
@@ -57,6 +58,40 @@ Client.on('interactionCreate', async (interaction) => {
 Client.slashCommands = new Discord.Collection()
 
 Client.on('messageCreate', async message => {
+    if (message.content.startsWith('!ia')) {
+        const args = message.content.split(' ');
+        args.shift();
+        const searchTerm = args.join(' ');
+
+        try {
+            let reply = await message.reply('⏳ Generando respuesta...');
+
+            const response = await axios.post('http://localhost:11434/api/generate', {
+                model: 'deepseek-r1:7b',
+                prompt: prompt + searchTerm,
+                stream: false
+            });
+            let responseText = response.data.response;
+            responseText = responseText.replace(/<think>.*?<\/think>/s, '').trim();
+            
+            if (responseText.length > MAX_LENGTH) {
+                let chunks = responseText.match(new RegExp(`.{1,${MAX_LENGTH}}`, 'g'));
+                reply.edit(chunks.shift());
+
+                for (let chunk of chunks) {
+                    await message.channel.send(chunk); 
+                }
+            } else {
+                reply.edit(responseText);
+            }
+
+        
+        } catch (error) {
+            console.error('Error al consultar Ollama:', error);
+            await message.reply('Hubo un error al obtener la respuesta de la IA.');
+        }
+    }
+
     if (message.content.startsWith('!join')) {
         const args = message.content.split(' ');
         // Si viene solo !join
@@ -80,7 +115,7 @@ Client.on('messageCreate', async message => {
                 }
             } catch (error) {
                 console.error('Error al unirse al canal de voz:', error);
-                message.reply('Error: se jodieron porque toca reiniciar el servidor y seguro me dormí, o sino fué que no le pasaron url, si no funciona fué que se partió en dos el bot y toca reiniciar. Esa vaina es culpa de Luis Bastidas');
+                message.reply('Se produjo un error. Si necesita ayuda contactar con MCube21');
             }
         }
         // Si viene !join seguido de una URL
@@ -117,10 +152,10 @@ Client.on('messageCreate', async message => {
                 }
             } catch (error) {
                 console.error('Error al unirse al canal de voz:', error);
-                message.reply('Error: se jodieron porque toca reiniciar el servidor y seguro me dormí, o sino fué que no le pasaron url, si no funciona fué que se partió en dos el bot y toca reiniciar. Esa vaina es culpa de Luis Bastidas');
+                message.reply('Se produjo un error. Si necesita ayuda contactar con MCube21');
             }
         }
-        // Si hay más de 2 argumentos (no es un formato válido)
+        
         else {
             message.reply('Formato de comando no válido. Por favor, utiliza `!join` o `!join <URL>`.');
         }
@@ -290,6 +325,7 @@ Client.on('messageCreate', async message => {
         }
     }
 });
+
 Client.login(process.env.DISCORD_KEY)
     .catch((error) => console.log(error))
 
