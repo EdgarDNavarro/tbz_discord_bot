@@ -14,6 +14,11 @@ const { default: axios } = require('axios')
 const MAX_LENGTH = 3000
 const prompt = "Eres un bot de discord llamado Tbz bot, estas aqui para ayudar a los integrantes del grupo, siempre responde en español. "
 
+function getListIdFromUrl(url) {
+  const urlObj = new URL(url);
+  return urlObj.searchParams.get("list");
+}
+
 async function downloadAudioFromYouTube(url, filePath) {
     try {
             const quality = "128"
@@ -250,8 +255,11 @@ Client.on('messageCreate', async message => {
         const args = message.content.split(' ');
         args.shift(); // Remueve !play del array
         const searchTerm = args.join(' ');
-
+        const playlistId = getListIdFromUrl(searchTerm);
+        
         try {
+            if (!playlistId) return message.reply('Por favor, proporciona una URL de lista de reproducción válida de YouTube.');
+
             if (message.guild && message.member?.voice?.channelId) {
                 const connection = joinVoiceChannel({
                     channelId: message.member?.voice?.channel?.id,
@@ -260,16 +268,11 @@ Client.on('messageCreate', async message => {
                 });
                 message.reply('Buscando...');
                 // Buscar en YouTube
-                const searchResultsPlayList = await youtubesearchapi.GetListByKeyword(searchTerm, true, 5, [{"type":"playlist"}]);
-
-                if (searchResultsPlayList.items.length === 0) {
-                    message.reply('No hubo resultados para tu búsqueda.');
-                    return;
-                }
                 
-                const searchPlayList = await youtubesearchapi.GetPlaylistData(searchResultsPlayList.items[0].id);
+                const searchPlayList = await youtubesearchapi.GetPlaylistData(playlistId);
+                
                 const playlistItems = searchPlayList.items;
-    
+                
                 if (playlistItems.length === 0) {
                     message.reply('La lista de reproducción está vacía.');
                     return;
@@ -299,10 +302,10 @@ Client.on('messageCreate', async message => {
                     connection.subscribe(player);
 
                     const embed = new EmbedBuilder()
-                    .setColor('Purple')
-                    .setTitle(item.title)
-                    .setDescription(item.length.simpleText)
-                    .setThumbnail(item.thumbnail.thumbnails[0]?.url)
+                        .setColor('Purple')
+                        .setTitle(item.title)
+                        .setDescription(item.length.simpleText)
+                        .setThumbnail(item.thumbnail.thumbnails[0]?.url)
     
                     await message.reply({ embeds: [embed]});
     
