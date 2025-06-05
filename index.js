@@ -46,7 +46,7 @@ const GetYoutubeMixData = async (url) => {
 
       initdata = await JSON.parse(data);
       
-      return await Promise.resolve({ initdata, apiToken, context, mixItems: initdata?.contents?.twoColumnWatchNextResults?.playlist?.playlist?.contents[0]?.playlistPanelVideoRenderer || [] });
+      return await Promise.resolve({ initdata, apiToken, context, mixItems: initdata?.contents?.twoColumnWatchNextResults?.playlist?.playlist?.contents || [] });
     } else {
       console.error("cannot_get_init_data");
       return await Promise.reject("cannot_get_init_data");
@@ -381,14 +381,9 @@ Client.on('messageCreate', async message => {
                     adapterCreator: message.guild.voiceAdapterCreator
                 });
                 message.reply('Buscando...');
-                // Buscar en YouTube
                 
                 const mixInfo = await GetYoutubeMixData(url);
-                
                 const playlistItems = mixInfo.mixItems
-
-                console.log(playlistItems);
-                
                 
                 if (playlistItems.length === 0) {
                     message.reply('El mix de reproducción está vacío.');
@@ -396,9 +391,9 @@ Client.on('messageCreate', async message => {
                 }
     
                 for (let i = 0; i < playlistItems.length; i++) {
-                    const item = playlistItems[i];
+                    const item = playlistItems[i].playlistPanelVideoRenderer;
+                    
                     const videoId = item.videoId;
-                    console.log(videoId);
                     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
     
                     const filePath = path.join(__dirname, `audio.mp3`);
