@@ -6,7 +6,7 @@ module.exports = {
 
         const embed = new EmbedBuilder()
             .setColor('Purple')
-            .setDescription(`Tostones: todavia 20 bs`)
+            .setDescription(`Tostones: Ahora el vendedor es fiscal`)
         interaction.reply({ embeds: [embed]})
     }
 }

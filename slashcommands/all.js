@@ -8,7 +8,7 @@ module.exports = {
     description: "Pregunta el precio de todas las monedas",
     async execute(client, interaction){
         await interaction.deferReply();
-        let insertCoin = { name: 'Error consultando, intenta de nuevo', value: `Algo salio mal :/, culpa de Luis Bastidas`, inline: true }
+        let insertCoin = { name: 'Error consultando, intenta de nuevo', value: `Algo salio mal`, inline: true }
         try {
             const response = await axios.get(urlBase + 'coins/latest');
             insertCoin = response.data
@@ -33,7 +33,7 @@ module.exports = {
                 )
             });
         } catch (error) {
-            insertCoin = { name: 'Error consultando, intenta de nuevo', value: `Algo salio mal :/, culpa de Luis Bastidas. Error: ${error}`, inline: true }
+            insertCoin = { name: 'Error consultando, intenta de nuevo', value: `Algo salio mal Error: ${error}`, inline: true }
         }
 
         const embed = new EmbedBuilder()

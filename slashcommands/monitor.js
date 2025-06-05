@@ -7,7 +7,7 @@ module.exports = {
     async execute(client, interaction){
         await interaction.deferReply();
         const precios = await getMonitor("null");
-        const precioMonitor = precios.enparalelovzla.price;
+        const precioMonitor = precios?.enparalelovzla?.price;
 
         const embed = new EmbedBuilder()
             .setColor('Purple')

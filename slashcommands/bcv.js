@@ -10,7 +10,7 @@ module.exports = {
         const precioBCV = precios.bcv.price;
         const embed = new EmbedBuilder()
             .setColor('Purple')
-            .setDescription(`BCV: ${precioBCV}, jeje god`)
+            .setDescription(`BCV: ${precioBCV}`)
         interaction.editReply({ embeds: [embed]})
     }
 }
