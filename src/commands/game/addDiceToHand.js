@@ -1,5 +1,5 @@
 const { Store } = require("../../systems/gameEngine.js");
-const { EmbedBuilder } = require("discord.js");
+const { buildGameEmbed } = require("../../utils/buildGameEmbed.js");
 
 module.exports = {
     async run(message) {
@@ -17,76 +17,27 @@ module.exports = {
             if (
                 isNaN(diceIndex) ||
                 diceIndex < 0 ||
-                diceIndex >= session.bolsoDados.length
+                diceIndex >= session.diceBag.length
             ) {
                 return await message.reply(
                     "❌ Por favor, proporciona un índice válido de dado para mostrar."
                 );
             }
 
-            const selectedDice = session.bolsoDados[diceIndex];
-            session.addDiceToHand(selectedDice);
+            const selectedDice = session.diceBag[diceIndex];
+            session.addDiceFromHand(selectedDice);
+            session.removeDiceFromBag(diceIndex);
+            const diceDescription = session.getDiceDescription(selectedDice);
 
-            // Contar dados en bolso
-            const diceWhitIndexIntText = session.bolsoDados
-                .map((dado, index) => {
-                    const elementText = dado.element
-                        ? ` (Elemento: ${dado.element})`
-                        : "";
-                    return `#${index} - Tipo: ${dado.type}, Caras: ${dado.faces.join(
-                        ", "
-                    )}${elementText}`;
-                })
-                .join("\n");
+            const extraFields = [
+                { name: "🎲 Dado seleccionado", value: diceDescription, inline: false }
+            ];
 
-            const diceInHandText = session.dadosMano.map((dice) => {
-                const elementText = dice.element
-                    ? ` (Elemento: ${dice.element})`
-                    : "";
-
-                return `Tipo: ${dice.type}, Caras: ${dice.faces.join(
-                    ","
-                )}${elementText}`;
-            }).join("\n");
-
-            const diceDescription = `
-                    **Tipo:** ${selectedDice.type}
-                    **Caras:** ${selectedDice.faces.join(", ")}
-                    ${
-                        selectedDice.element
-                            ? `**Elementos:** ${selectedDice.element}`
-                            : ""
-                    }
-            `.trim();
-
-            const embed = new EmbedBuilder()
-                .setTitle(`🎲 Dados en bolso y dado seleccionado`)
-                .setColor("Purple")
-                .addFields(
-                    {
-                        name: "Dados en bolso",
-                        value: diceWhitIndexIntText || "Ninguno",
-                        inline: true,
-                    },
-                    {
-                        name: `Dado seleccionado (#${diceIndex})`,
-                        value: diceDescription || "Sin detalles disponibles",
-                        inline: false,
-                    },
-                    {
-                        name: "Dados en mano",
-                        value: diceInHandText || "Ninguno",
-                        inline: false,
-                    }
-                )
-                .setTimestamp();
-
+            const embed = buildGameEmbed(session, message.author.username, extraFields);
             await message.reply({ embeds: [embed] });
         } catch (err) {
             console.error(err);
-            await message.reply(
-                "❌ Hubo un error al mostrar los dados. Intenta nuevamente."
-            );
+            await message.reply(err.message || "❌ Hubo un error al agregar el dado a la mano. Intenta nuevamente.");
         }
     },
 };

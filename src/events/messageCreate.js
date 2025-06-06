@@ -9,6 +9,7 @@ const ytselect = require('../commands/ytselect');
 
 //Game
 const initgame = require('../commands/game/initgame');
+const infogame = require('../commands/game/infogame');
 const addDiceToHand = require('../commands/game/addDiceToHand');
 const rolldice = require('../commands/game/rolldice');
 
@@ -27,6 +28,7 @@ async function handleMessageCreate(client, message) {
     if (message.content.startsWith('!ytselect')) return ytselect.run(message);
 
     if (message.content.startsWith('!initgame')) return initgame.run(message);
+    if (message.content.startsWith('!infogame')) return infogame.run(message);
     if (message.content.startsWith('!addd')) return addDiceToHand.run(message);
     if (message.content.startsWith('!rolldice')) return rolldice.run(message);
 

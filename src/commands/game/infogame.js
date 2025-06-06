@@ -8,22 +8,7 @@ module.exports = {
             const userId = message.author.id;
             const store = new Store();
 
-            // Crear o resetear sesión
             const session = store.getSession(userId);
-
-            // Resetear estado manualmente si quieres reiniciar la partida
-            session.diceBag = [];
-            session.diceInHand = [];
-            session.items = [];
-            session.dicePlayed = [];
-            session.score = 0;
-            session.coins = 0;
-            session.currentRound = 1;
-            session.estado = "jugando";
-
-            session.addDiceFromBag(DiceFactory.createDice("D6"));
-            session.addDiceFromBag(DiceFactory.createDice("D6"));
-            session.addDiceFromBag(DiceFactory.createDice("D4"));
 
             const embed = buildGameEmbed(session, message.author.username);
             await message.reply({ embeds: [embed] });

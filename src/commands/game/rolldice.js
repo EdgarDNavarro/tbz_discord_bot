@@ -1,5 +1,5 @@
 const { Store } = require("../../systems/gameEngine.js");
-const { EmbedBuilder } = require("discord.js");
+const { buildGameEmbed } = require("../../utils/buildGameEmbed.js");
 
 module.exports = {
     async run(message) {
@@ -9,7 +9,7 @@ module.exports = {
 
             const session = store.getSession(userId);
 
-            if (session.dadosMano.length === 0) {
+            if (session.diceInHand.length === 0) {
                 return await message.reply(
                     "❌ No tienes dados en la mano para tirar. Usa el comando para agregar dados a la mano."
                 );
@@ -17,57 +17,14 @@ module.exports = {
 
             const roundTotal = session.rollDice();
 
+            const extraFields = [
+                { name: "🔥 Total lanzado esta ronda", value: `${roundTotal}`, inline: false }
+            ];
+
             session.nextRound();
+            session.startRound()
 
-            const dadosTiradosTexto = session.dadosMano
-                .map(
-                    (dado, i) =>
-                        `${i + 1}. ${dado.type} (caras: ${
-                            dado.faces?.join(", ") || "N/A"
-                        })`
-                )
-                .join("\n");
-
-            const estadoMap = {
-                jugando: "🎮 Jugando",
-                ganado: "🏆 Ganaste",
-                perdido: "💀 Perdiste",
-            };
-            const estadoAmigable = estadoMap[session.estado] || session.estado;
-
-            // Crear embed con info completa
-            const embed = new EmbedBuilder()
-                .setTitle(`🎲 Tirada de dados completada`)
-                .setColor("Purple")
-                .addFields(
-                    {
-                        name: "Dados tirados esta ronda",
-                        value: dadosTiradosTexto || "No hay dados",
-                        inline: false,
-                    },
-                    {
-                        name: "Puntaje de esta tirada",
-                        value: roundTotal.toString(),
-                        inline: true,
-                    },
-                    {
-                        name: "Puntaje total acumulado",
-                        value: session.puntaje.toString(),
-                        inline: true,
-                    },
-                    {
-                        name: "Ronda actual",
-                        value: session.rondaActual.toString(),
-                        inline: true,
-                    },
-                    {
-                        name: "Estado del juego",
-                        value: estadoAmigable,
-                        inline: true,
-                    }
-                )
-                .setTimestamp();
-
+            const embed = buildGameEmbed(session, message.author.username, extraFields);
             await message.reply({ embeds: [embed] });
         } catch (err) {
             console.error(err);

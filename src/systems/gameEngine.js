@@ -45,7 +45,7 @@ class Item {
     constructor(name, type, effect) {
         this.name = name;
         this.type = type; // 'consumible', 'pasivo', 'activo'
-        this.effect = effect; // función o clase que modifique dados o puntajes
+        this.effect = effect; // función o clase que modifique dados o scores
     }
 
     applyEffect(gameSession) {
@@ -60,27 +60,7 @@ class Item {
 class ItemFactory {
     static createItem(name) {
         switch (name) {
-            case "FireCharm":
-                return new Item("FireCharm", "pasivo", (session) => {
-                    // Modifica dados de fuego para sumar +1 en tiradas
-                    session.bolsoDados.forEach((dado) => {
-                        if (dado.element === "fire") {
-                            dado.roll = () => {
-                                const base =
-                                    Math.floor(
-                                        Math.random() * dado.faces.length
-                                    ) + 1;
-                                return base + 1;
-                            };
-                        }
-                    });
-                });
-            case "ExtraDice":
-                return new Item("ExtraDice", "activo", (session) => {
-                    // Agrega un dado extra a la ronda actual
-                    const nuevoDado = DiceFactory.createDice("D6");
-                    session.dadosMano.push(nuevoDado);
-                });
+
             default:
                 throw new Error("Item no soportado");
         }
@@ -91,45 +71,68 @@ class ItemFactory {
 class GameSession {
     constructor(userId) {
         this.userId = userId;
-        this.bolsoDados = []; // Dados que tiene el jugador
-        this.dadosMano = []; // Dados usados en la ronda
+        this.diceBag = []; // Dados que tiene el jugador
+        this.diceInHand = []; // Dados usados en la ronda
+        this.dicePlayed = []; // Dados que ya se han jugado
         this.items = []; // Items que tiene el jugador
-        this.puntaje = 0;
-        this.monedas = 5;
-        this.rondaActual = 1;
-        this.estado = "jugando"; // 'jugando', 'perdido', 'ganado'
-        this.limiteDadosBolsillo = 10;
-        this.limiteDadosRonda = 3;
-        this.limiteRondas = 3;
-        this.puntajeObjetivo = 0;
+        this.score = 0;
+        this.coins = 5;
+        this.currentRound = 1;
+        this.status = "playing"; // 'playing', 'lost', 'won'
+        this.limitDiceBag = 10;
+        this.limitDiceRound = 3;
+        this.limitRounds = 3;
+        this.targetScore = 20;
     }
 
-    addDice(dado) {
-        if (this.bolsoDados.length < this.limiteDadosBolsillo) {
-            this.bolsoDados.push(dado);
+    addDiceFromBag(dice) {
+        if (this.diceBag.length < this.limitDiceBag) {
+            this.diceBag.push(dice);
         } else {
             throw new Error("Límite de dados en bolsillo alcanzado");
         }
     }
 
-    startRound() {
-        this.dadosMano = [];
+    removeDiceFromBag(diceIndex) {
+        if (diceIndex < 0 || diceIndex >= this.diceBag.length) {
+            throw new Error("Índice de dado no válido");
+        }
+        this.diceBag.splice(diceIndex, 1);
     }
 
-    addDiceToHand(dado) {
-        if (this.dadosMano.length < this.limiteDadosRonda) {
-            this.dadosMano.push(dado);
+    startRound() {
+        if(this.diceInHand.length > 0) {
+            this.dicePlayed.push(...this.diceInHand);
+            this.diceInHand = [];
+        }
+        
+        if(this.diceInHand.length === 0 && this.diceBag.length === 0) {
+            this.diceBag = this.dicePlayed;
+            this.dicePlayed = [];
+        }
+    }
+
+    addDiceFromHand(dice) {
+        if (this.diceInHand.length < this.limitDiceRound) {
+            this.diceInHand.push(dice);
         } else {
             throw new Error("Límite de dados por ronda alcanzado");
         }
     }
 
+    removeDiceFromHand(diceIndex) {
+        if (diceIndex < 0 || diceIndex >= this.diceInHand.length) {
+            throw new Error("Índice de dado no válido en mano");
+        }
+        this.diceInHand.splice(diceIndex, 1);
+    }
+
     rollDice() {
         let total = 0;
-        this.dadosMano.forEach((dado) => {
-            total += dado.roll();
+        this.diceInHand.forEach((dice) => {
+            total += dice.roll();
         });
-        this.puntaje += total;
+        this.score += total;
 
         // Aplicar efectos de items
         this.items.forEach((item) => item.applyEffect(this));
@@ -138,19 +141,52 @@ class GameSession {
     }
 
     nextRound() {
-        this.rondaActual++;
-        if (this.rondaActual > this.limiteRondas) {
-            this.estado =
-                this.puntaje >= this.puntajeObjetivo ? "ganado" : "perdido";
+        this.currentRound++;
+        if (this.currentRound > this.limitRounds) {
+            this.status =
+                this.score >= this.targetScore ? "won" : "lost";
         }
     }
 
     currentStatus() {
         return {
-            ronda: this.rondaActual,
-            puntaje: this.puntaje,
-            estado: this.estado,
+            ronda: this.currentRound,
+            score: this.score,
+            status: this.status,
         };
+    }
+
+    getDiceWhitIndexIntText() {
+        return this.diceBag.map((dice, index) => {
+            const elementText = dice.element ? ` (Elemento: ${dice.element})` : "";
+
+            return `#${index} - Tipo: ${dice.type}, Caras: ${dice.faces.join(", ")}${elementText}`;
+
+        }).join("\n");
+    }
+
+    getDiceInHandText() {
+        return this.diceInHand.map((dice, index) => {
+            const elementText = dice.element ? ` (Elemento: ${dice.element})` : "";
+
+            return `#${index} - Tipo: ${dice.type}, Caras: ${dice.faces.join(",")}${elementText}`;
+        }).join("\n");
+    }
+
+    getDicePlayedText() {
+        return this.dicePlayed.map((dice) => {
+            const elementText = dice.element ? ` (Elemento: ${dice.element})` : "";
+
+            return `#Tipo: ${dice.type}, Caras: ${dice.faces.join(",")}${elementText}`;
+        }).join("\n");
+    }
+
+    getDiceDescription(dice) {
+        return `
+            **Tipo:** ${dice.type}
+            **Caras:** ${dice.faces.join(", ")}
+            ${dice.element ? `**Elementos:** ${dice.element}` : ""}
+        `.trim();
     }
 }
 
@@ -158,18 +194,18 @@ class Shop {
     constructor() {
         if (Shop.instance) return Shop.instance;
 
-        this.inventario = [];
-        this.monedas = 0;
+        this.shopInventory = [];
+        this.coins = 0;
 
         Shop.instance = this;
     }
 
     agregarItem(item) {
-        this.inventario.push(item);
+        this.shopInventory.push(item);
     }
 
     comprarItem(userSession, itemName) {
-        // Lógica de compra: verificar monedas, agregar a usuario
+        // Lógica de compra: verificar coins, agregar a usuario
     }
 }
 
@@ -188,16 +224,6 @@ class Store {
         return this.sessions.get(userId);
     }
 }
-
-// Uso básico:
-// const store = new Store();
-// const session = store.getSession("user123");
-// const dado1 = DiceFactory.createDice("D6");
-// session.agregarDado(dado1);
-// session.iniciarRonda();
-// session.agregarDadoAMano(dado1);
-// console.log("Tirada:", session.tirarDados());
-// console.log(session.estadoActual());
 
 module.exports = {
     Dice,
