@@ -17,7 +17,7 @@ module.exports = {
             session.items = [];
             session.dicePlayed = [];
             session.score = 0;
-            session.coins = 0;
+            session.coins = 10;
             session.currentRound = 1;
             session.estado = "jugando";
 

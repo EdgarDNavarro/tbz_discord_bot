@@ -13,6 +13,8 @@ const infogame = require('../commands/game/infogame');
 const addDiceToHand = require('../commands/game/addDiceToHand');
 const rmvdice = require('../commands/game/rmvdice');
 const rolldice = require('../commands/game/rolldice');
+const shop = require('../commands/game/shop');
+const buy = require('../commands/game/buy');
 
 const tbzhelp = require('../commands/tbzhelp');
 
@@ -33,6 +35,8 @@ async function handleMessageCreate(client, message) {
     if (message.content.startsWith('!addd')) return addDiceToHand.run(message);
     if (message.content.startsWith('!rmvdice')) return rmvdice.run(message);
     if (message.content.startsWith('!rolldice')) return rolldice.run(message);
+    if (message.content.startsWith('!shop')) return shop.run(message);
+    if (message.content.startsWith('!buy')) return buy.run(message);
 
     if (message.content.startsWith('!tbzhelp')) return tbzhelp.run(message);
     

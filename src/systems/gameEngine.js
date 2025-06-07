@@ -1,9 +1,14 @@
+const DICE_TYPES = ["D4", "D6", "D8", "fireD4", "fireD6", "D4+", "D6+"];
+
 // Dice.js
 class Dice {
-    constructor(type, faces, element = null) {
+    constructor(type, faces, purchasePrice, sellingPrice, element = null, effect = null) {
         this.type = type; // Ej: 'D6', 'D8', etc
         this.faces = faces; // Array de valores o funciones para cada cara
+        this.purchasePrice = purchasePrice;
+        this.sellingPrice = sellingPrice;
         this.element = element; // Ej: 'fire', 'water', null
+        this.effect = effect
     }
 
     roll() {
@@ -21,15 +26,42 @@ class DiceFactory {
     static createDice(type) {
         switch (type) {
             case "D4":
-                return new Dice("D4", [1, 2, 3, 4]);
+                return new Dice("D4", [1, 2, 3, 4], 4, 1);
             case "D6":
-                return new Dice("D6", [1, 2, 3, 4, 5, 6]);
+                return new Dice("D6", [1, 2, 3, 4, 5, 6], 4, 1);
+            case "D8":
+                return new Dice("D8", [1, 2, 3, 4, 5, 6, 7, 8], 5, 2);
+            case "fireD4":
+                return new Dice(
+                    "fireD4", 
+                    [1, 2, 3, 4], 
+                    7,
+                    3,
+                    "fire",
+                    (acc) => Math.ceil(acc * 0.5)
+                );
             case "fireD6":
                 return new Dice(
-                    "fireD6", [
-                        {type: "effect", function: (acc) => Math.ceil(acc * 0.5), description: "🔥 Fuego: Mitad del total acumulado" },
-                    ], "fire"
+                    "fireD6", 
+                    [1, 2, 3, 4, 5, 6], 
+                    7,
+                    3,
+                    "fire",
+                    (acc) => Math.ceil(acc * 0.5)
                 );
+            case "D4+":
+                return new Dice("D4+", [3, 4, 5, 6], 6, 2);
+            case "D6+":
+                return new Dice("D6+", [3, 4, 5, 6, 7, 8], 8, 3);
+            // case "fireD6":
+            //     return new Dice(
+            //         "fireD6", 
+            //         [
+            //             {type: "effect", function: (acc) => Math.ceil(acc * 0.5), description: "🔥 Fuego: Mitad del total acumulado" },
+            //         ], 
+            //         "fire",
+            //         (acc) => Math.ceil(acc * 0.5)
+            //     );
             default:
                 throw new Error("Tipo de dado no soportado");
         }
@@ -73,12 +105,33 @@ class GameSession {
         this.items = []; // Items que tiene el jugador
         this.score = 0;
         this.coins = 5;
+        this.currentShopInventory = [];
         this.currentRound = 1;
         this.status = "playing"; // 'playing', 'lost', 'won'
         this.limitDiceBag = 10;
         this.limitDiceRound = 3;
         this.limitRounds = 3;
         this.targetScore = 20;
+    }
+
+    startRound() {
+        if(this.diceInHand.length > 0) {
+            this.dicePlayed.push(...this.diceInHand);
+            this.diceInHand = [];
+        }
+        
+        if(this.diceInHand.length === 0 && this.diceBag.length === 0) {
+            this.diceBag = this.dicePlayed;
+            this.dicePlayed = [];
+        }
+    }
+
+    nextRound() {
+        this.currentRound++;
+        if (this.currentRound > this.limitRounds) {
+            this.status =
+                this.score >= this.targetScore ? "won" : "lost";
+        }
     }
 
     addDiceFromBag(dice) {
@@ -96,18 +149,6 @@ class GameSession {
         this.diceBag.splice(diceIndex, 1);
     }
 
-    startRound() {
-        if(this.diceInHand.length > 0) {
-            this.dicePlayed.push(...this.diceInHand);
-            this.diceInHand = [];
-        }
-        
-        if(this.diceInHand.length === 0 && this.diceBag.length === 0) {
-            this.diceBag = this.dicePlayed;
-            this.dicePlayed = [];
-        }
-    }
-
     addDiceFromHand(dice) {
         if (this.diceInHand.length < this.limitDiceRound) {
             this.diceInHand.push(dice);
@@ -123,19 +164,12 @@ class GameSession {
         this.diceInHand.splice(diceIndex, 1);
     }
 
-    async applyCombinations(results, message) {
+    async applyCombinationsBeforeRolls(dice, message) {
         let bonus = 0;
 
-        // 🧮 Regla 1: Solo un dado lanzado → multiplicar por 1.5
-        if (results.length === 1) {
-            const extra = Math.floor(results[0].points * 0.5);
-            bonus += extra;
-            await message.reply(`🧮 Bonus: Al lanzar solo 1 dado, se aplica x1.5 → +${extra} puntos`);
-        }
-
-        // 🎯 Regla 2: Si dos dados son del mismo tipo → +3 puntos
+        // 🎯 Regla : Si dos dados son del mismo tipo → +3 puntos
         const typeCounts = {};
-        for (const { dice } of results) {
+        for (const dice of this.diceInHand) {
             typeCounts[dice.type] = (typeCounts[dice.type] || 0) + 1;
         }
         if (Object.values(typeCounts).some(count => count >= 2)) {
@@ -143,11 +177,24 @@ class GameSession {
             await message.reply(`🎯 Bonus: 2 dados del mismo tipo → +3 puntos`);
         }
 
-        // 🔥 Regla 3: Por cada dado con elemento fuego → +1 punto
-        const fireCount = results.filter(({ dice }) => dice.element === "fire").length;
+        // 🔥 Regla: Por cada dado con elemento fuego → +1 punto
+        const fireCount = this.diceInHand.filter(( dice ) => dice.element === "fire").length;
         if (fireCount > 0) {
             bonus += fireCount;
             await message.reply(`🔥 Bonus: ${fireCount} dado(s) de fuego → +${fireCount} punto(s)`);
+        }
+
+        return bonus;
+    }
+
+    async applyCombinationsAfterRolls(results, message) {
+        let bonus = 0;
+
+        // 🧮 Regla 1: Solo un dado lanzado → multiplicar por 1.5
+        if (results.length === 1) {
+            const extra = Math.floor(results[0].points * 0.5);
+            bonus += extra;
+            await message.reply(`🧮 Bonus: Al lanzar solo 1 dado, se aplica x1.5 → +${extra} puntos`);
         }
 
         return bonus;
@@ -159,37 +206,43 @@ class GameSession {
         let dicePoints = 0;
         const results = []; 
 
+        const preBonus = await this.applyCombinationsBeforeRolls(this.diceInHand, message)
+        total += preBonus;
+
         for (const dice of this.diceInHand) {
+            dicePoints = 0
             const diceFace = dice.roll(total);
 
-            if (typeof diceFace === "object" && diceFace.function) {
-                dicePoints = diceFace.function(this.score + total);
+            if(dice.element === "fire") {
+                dicePoints += diceFace;
+                total += diceFace;
+
+                const effectResult = dice.effect(total)
+
+                total += effectResult;
+                dicePoints += effectResult;
+                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${diceFace} + 🔥 Fuego: Mitad del total de la ronda: ${effectResult}, Total: ${dicePoints}`);
+            }else if (typeof diceFace === "object" && diceFace.function) {
+                dicePoints += diceFace.function(total);
+                total += dicePoints;
                 await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints} (${diceFace.description})`);
             } else {
-                dicePoints = diceFace;
+                dicePoints += diceFace;
+                total += dicePoints;
                 await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints}`);
             }
 
             results.push({ dice, points: dicePoints });
-            total += dicePoints;
         }
 
         // Aplicar efectos de combinación
-        const bonus = await this.applyCombinations(results, message);
+        const bonus = await this.applyCombinationsAfterRolls(results, message);
+
         total += bonus;
 
         this.score += total;
 
         return total;
-    }
-
-
-    nextRound() {
-        this.currentRound++;
-        if (this.currentRound > this.limitRounds) {
-            this.status =
-                this.score >= this.targetScore ? "won" : "lost";
-        }
     }
 
     currentStatus() {
@@ -238,18 +291,63 @@ class Shop {
     constructor() {
         if (Shop.instance) return Shop.instance;
 
-        this.shopInventory = [];
-        this.coins = 0;
-
+        this.shopInventory = []; // Global (si querés una tienda global, no por jugador)
         Shop.instance = this;
     }
 
-    agregarItem(item) {
-        this.shopInventory.push(item);
+    showShop(session, message) {
+        // Generar 3 dados aleatorios
+        const haveShopInventory = session.currentShopInventory && session.currentShopInventory.length > 0;
+        
+        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 3);
+        const dice = haveShopInventory ? session.currentShopInventory : randomDiceTypes.map(type => DiceFactory.createDice(type));
+
+        // Guardar esta "oferta" temporal en la sesión del jugador
+        if(!haveShopInventory) {
+            session.currentShopInventory = dice;
+        }
+
+        // Formatear el texto
+        const textoTienda = [
+            `🛒 **¡Bienvenido a la Tienda de Dados!**`,
+            `Tienes 🪙 ${session.coins} monedas.`,
+            ``,
+            ...dice.map((die, index) => {
+                const elementText = die.element ? ` | Elemento: ${die.element}` : "";
+                return `**#${index}** - ${die.type} (Caras: ${die.faces.join(", ")})${elementText} | 💰 ${die.purchasePrice} monedas`;
+            }),
+            ``,
+            `Escribe \`!buy <número>\` para comprar uno.`
+        ].join("\n");
+
+        return message.reply(textoTienda);
     }
 
-    comprarItem(userSession, itemName) {
-        // Lógica de compra: verificar coins, agregar a usuario
+    buy(session, index) {
+        const shop = session.currentShopInventory;
+        if (!shop || !Array.isArray(shop) || shop.length === 0) {
+            throw new Error("❌ No hay tienda activa. Usa `!shop` para ver opciones.");
+        }
+
+        if (                
+            isNaN(index) ||
+            index < 0 ||
+            index >= session.currentShopInventory.length
+        ) throw new Error("❌ Índice de dado no válido.");
+
+        const die = session.currentShopInventory[index];
+
+        if (session.coins < die.purchasePrice) throw new Error("❌ No tienes suficientes monedas.");
+        if (session.diceBag.length >= session.limitDiceBag) throw new Error("❌ Límite de dados en el bolsillo alcanzado.");
+
+        
+
+        // Efectuar la compra
+        session.coins -= die.purchasePrice;
+        session.addDiceFromBag(die);
+        session.currentShopInventory.splice(index, 1);
+
+        return `✅ Compraste el dado ${die.type} por ${die.purchasePrice} monedas.`;
     }
 }
 
