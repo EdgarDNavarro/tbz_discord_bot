@@ -15,7 +15,7 @@ module.exports = {
                 );
             }
 
-            const roundTotal = session.rollDice();
+            const roundTotal = await session.rollDice(message);
 
             const extraFields = [
                 { name: "🔥 Total lanzado esta ronda", value: `${roundTotal}`, inline: false }

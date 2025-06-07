@@ -12,7 +12,7 @@ class Dice {
         const result = this.faces[index];
 
         // Si la cara es función (efecto), ejecutarla, si no, valor simple
-        return typeof result === "function" ? result() : result;
+        return result;
     }
 }
 
@@ -24,15 +24,11 @@ class DiceFactory {
                 return new Dice("D4", [1, 2, 3, 4]);
             case "D6":
                 return new Dice("D6", [1, 2, 3, 4, 5, 6]);
-            case "D8":
-                return new Dice("D8", [1, 2, 3, 4, 5, 6, 7, 8]);
-            case "D12":
-                return new Dice("D12", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-            case "D20":
-                return new Dice("D20", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
             case "fireD6":
                 return new Dice(
-                    "fireD6", [1, 2, 3, 4, 5, 6], "fire"
+                    "fireD6", [
+                        {type: "effect", function: (acc) => Math.ceil(acc * 0.5), description: "🔥 Fuego: Mitad del total acumulado" },
+                    ], "fire"
                 );
             default:
                 throw new Error("Tipo de dado no soportado");
@@ -127,18 +123,66 @@ class GameSession {
         this.diceInHand.splice(diceIndex, 1);
     }
 
-    rollDice() {
-        let total = 0;
-        this.diceInHand.forEach((dice) => {
-            total += dice.roll();
-        });
-        this.score += total;
+    async applyCombinations(results, message) {
+        let bonus = 0;
 
-        // Aplicar efectos de items
-        this.items.forEach((item) => item.applyEffect(this));
+        // 🧮 Regla 1: Solo un dado lanzado → multiplicar por 1.5
+        if (results.length === 1) {
+            const extra = Math.floor(results[0].points * 0.5);
+            bonus += extra;
+            await message.reply(`🧮 Bonus: Al lanzar solo 1 dado, se aplica x1.5 → +${extra} puntos`);
+        }
+
+        // 🎯 Regla 2: Si dos dados son del mismo tipo → +3 puntos
+        const typeCounts = {};
+        for (const { dice } of results) {
+            typeCounts[dice.type] = (typeCounts[dice.type] || 0) + 1;
+        }
+        if (Object.values(typeCounts).some(count => count >= 2)) {
+            bonus += 3;
+            await message.reply(`🎯 Bonus: 2 dados del mismo tipo → +3 puntos`);
+        }
+
+        // 🔥 Regla 3: Por cada dado con elemento fuego → +1 punto
+        const fireCount = results.filter(({ dice }) => dice.element === "fire").length;
+        if (fireCount > 0) {
+            bonus += fireCount;
+            await message.reply(`🔥 Bonus: ${fireCount} dado(s) de fuego → +${fireCount} punto(s)`);
+        }
+
+        return bonus;
+    }
+
+
+    async rollDice(message) {
+        let total = 0;
+        let dicePoints = 0;
+        const results = []; 
+
+        for (const dice of this.diceInHand) {
+            const diceFace = dice.roll(total);
+
+            if (typeof diceFace === "object" && diceFace.function) {
+                dicePoints = diceFace.function(this.score + total);
+                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints} (${diceFace.description})`);
+            } else {
+                dicePoints = diceFace;
+                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints}`);
+            }
+
+            results.push({ dice, points: dicePoints });
+            total += dicePoints;
+        }
+
+        // Aplicar efectos de combinación
+        const bonus = await this.applyCombinations(results, message);
+        total += bonus;
+
+        this.score += total;
 
         return total;
     }
+
 
     nextRound() {
         this.currentRound++;

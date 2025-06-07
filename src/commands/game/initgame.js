@@ -24,6 +24,7 @@ module.exports = {
             session.addDiceFromBag(DiceFactory.createDice("D6"));
             session.addDiceFromBag(DiceFactory.createDice("D6"));
             session.addDiceFromBag(DiceFactory.createDice("D4"));
+            session.addDiceFromBag(DiceFactory.createDice("fireD6"));
 
             const embed = buildGameEmbed(session, message.author.username);
             await message.reply({ embeds: [embed] });
