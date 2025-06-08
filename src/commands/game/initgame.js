@@ -1,5 +1,5 @@
 // src/commands/initgame.js
-const { Store, DiceFactory } = require("../../systems/gameEngine.js");
+const { Store, DiceFactory, ItemFactory } = require("../../systems/gameEngine.js");
 const { buildGameEmbed } = require("../../utils/buildGameEmbed.js");
 
 module.exports = {
@@ -25,6 +25,11 @@ module.exports = {
             session.addDiceFromBag(DiceFactory.createDice("D6"));
             session.addDiceFromBag(DiceFactory.createDice("D4"));
             session.addDiceFromBag(DiceFactory.createDice("fireD6"));
+            session.addDiceFromBag(DiceFactory.createDice("undeadD6"));
+
+            session.addItem(ItemFactory.createItem("gemelos"));
+            session.addItem(ItemFactory.createItem("reflejo"));
+            session.addItem(ItemFactory.createItem("endurance"));
 
             const embed = buildGameEmbed(session, message.author.username);
             await message.reply({ embeds: [embed] });

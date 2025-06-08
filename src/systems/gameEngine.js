@@ -1,4 +1,4 @@
-const DICE_TYPES = ["D4", "D6", "D8", "fireD4", "fireD6", "D4+", "D6+"];
+const DICE_TYPES = ["D4", "D6", "D8", "fireD4", "fireD6", "D4+", "D6+", "undeadD6"];
 
 // Dice.js
 class Dice {
@@ -53,6 +53,15 @@ class DiceFactory {
                 return new Dice("D4+", [3, 4, 5, 6], 6, 2);
             case "D6+":
                 return new Dice("D6+", [3, 4, 5, 6, 7, 8], 8, 3);
+            case "undeadD6":
+                return new Dice(
+                    "undeadD6", 
+                    [1, 2, 3, 4, 5, 6], 
+                    7,
+                    3,
+                    "undead",
+                    (playedDice) => playedDice * 2
+                );
             // case "fireD6":
             //     return new Dice(
             //         "fireD6", 
@@ -72,14 +81,15 @@ class DiceFactory {
 class Item {
     constructor(name, type, effect) {
         this.name = name;
-        this.type = type; // 'consumible', 'pasivo', 'activo'
+        this.type = type; // 'beforeRoll', 'inRoll', 'afterRoll'
         this.effect = effect; // función o clase que modifique dados o scores
     }
 
-    applyEffect(gameSession) {
+    applyEffect(properties) {
+        // properties = {session, dice, dieFace, total, diePoints, message}
         // Aplica efecto sobre la sesión de juego
         if (typeof this.effect === "function") {
-            this.effect(gameSession);
+            this.effect(properties);
         }
     }
 }
@@ -88,12 +98,51 @@ class Item {
 class ItemFactory {
     static createItem(name) {
         switch (name) {
+            // case "doubleFire":
+            //     return new Item("Double Fire", "inRoll", ({ dice, dieFace, total, session, message }) => {
+            //         if (dice.element === "fire") {
+            //             const extra = Math.ceil(total * 0.5);
+            //             session.score += extra;
+            //             message.reply(`🔥 Double Fire: ¡El fuego arde más fuerte! +${extra} puntos extra.`);
+            //         }
+            //     });
+
+            case "endurance":
+                return new Item("Endurance Medal", "afterRoll", ({ total, session, message }) => {
+                    if (total > 15) {
+                        session.score += 2;
+                        message.reply("🏅 Endurance Medal: +2 puntos por una ronda intensa.");
+                    }
+                });
+
+            case "gemelos":
+                return new Item("Gemelos", "inRoll", ({ dice, dieFace, total, session, diePoints, message }) => {
+                    //si es multiplo de 2 mupltiplica por 2
+                    if (dieFace % 2 === 0) {
+                        const extra = dieFace * 2;
+                        
+                        message.reply(`👯 Gemelos: ¡Multiplicaste por 2! +${dieFace} puntos.`);
+                        return extra;
+                    }
+                });
+
+            case "reflejo":
+                return new Item("Reflejo", "inRoll", ({ dice, dieFace, total, session, diePoints, message }) => {
+                    //Probabiliad de 50% de que esa cara puntue dos veces
+                    if (Math.random() < 0.5) {
+                        const extra = diePoints;
+
+                        message.reply(`🔮 Reflejo: ¡Tu dado puntúa dos veces! +${diePoints} puntos.`);
+                        return extra;
+                    }
+                });
 
             default:
                 throw new Error("Item no soportado");
         }
     }
 }
+
 
 // GameSession.js
 class GameSession {
@@ -132,6 +181,10 @@ class GameSession {
             this.status =
                 this.score >= this.targetScore ? "won" : "lost";
         }
+    }
+
+    addItem(item) {
+        this.items.push(item);
     }
 
     addDiceFromBag(dice) {
@@ -187,14 +240,36 @@ class GameSession {
         return bonus;
     }
 
-    async applyCombinationsAfterRolls(results, message) {
+    async applyCombinationsAfterRolls(results, message, total) {
         let bonus = 0;
 
-        // 🧮 Regla 1: Solo un dado lanzado → multiplicar por 1.5
+        // 🧮 Regla: Solo un dado lanzado → multiplicar por 1.5
         if (results.length === 1) {
-            const extra = Math.floor(results[0].points * 0.5);
+            const extra = Math.ceil(total * 0.5);
             bonus += extra;
             await message.reply(`🧮 Bonus: Al lanzar solo 1 dado, se aplica x1.5 → +${extra} puntos`);
+        }
+
+        // Si lanzaste 2 o mas y dos de ellos sacaron la misma caras (pero no 3 sacaron las mismas caras) multiplicas por 1.5
+        if (results.length >= 2) {
+            const faceCounts = {};
+            results.forEach(result => {
+                faceCounts[result.points] = (faceCounts[result.points] || 0) + 1;
+            });
+
+            const pairs = Object.values(faceCounts).filter(count => count >= 2);
+            if (pairs.length > 0 && pairs.length < 3) {
+                const extra = Math.ceil((total + bonus) * 0.5);
+                bonus += extra;
+                await message.reply(`🧮 Bonus: Dos Dados sacaron la misma cara, se aplica x1.5 → +${extra} extras puntos`);
+            }
+        }
+
+        // Si lanzaste 3 dados y el resultado de las 3 fue igual multiplica por 3
+        if (results.length === 3 && results.every(result => result.points === results[0].points)) {
+            const extra = (total + bonus) * 2; 
+            bonus += extra;
+            await message.reply(`🎲 Bonus: Los 3 dados sacaron ${results[0].points}, se multiplica el total por 2 y se suma → +${extra} extras puntos`);
         }
 
         return bonus;
@@ -209,6 +284,11 @@ class GameSession {
         const preBonus = await this.applyCombinationsBeforeRolls(this.diceInHand, message)
         total += preBonus;
 
+            // 🎯 BEFORE ROLL ITEMS
+        this.items
+            .filter(item => item.type === "beforeRoll")
+            .forEach(item => item.applyEffect({ session: this, message }));
+
         for (const dice of this.diceInHand) {
             dicePoints = 0
             const diceFace = dice.roll(total);
@@ -222,7 +302,15 @@ class GameSession {
                 total += effectResult;
                 dicePoints += effectResult;
                 await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${diceFace} + 🔥 Fuego: Mitad del total de la ronda: ${effectResult}, Total: ${dicePoints}`);
-            }else if (typeof diceFace === "object" && diceFace.function) {
+            } else if (dice.element === "undead") {
+                dicePoints += diceFace;
+                total += diceFace;
+
+                const effectResult = dice.effect(this.dicePlayed.length)
+                total += effectResult;
+                dicePoints += effectResult;
+                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${diceFace} + 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados: ${this.dicePlayed.length} + 2 = ${effectResult}, Total: ${dicePoints}`);
+            } else if (typeof diceFace === "object" && diceFace.function) {
                 dicePoints += diceFace.function(total);
                 total += dicePoints;
                 await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints} (${diceFace.description})`);
@@ -232,13 +320,26 @@ class GameSession {
                 await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints}`);
             }
 
+            this.items
+                .filter(item => item.type === "inRoll")
+                .forEach(item => {
+                    const itemResult = item.applyEffect({ session: this, dice, dieFace: diceFace, total, diePoints: dicePoints, message });
+                    if (itemResult) {
+                        total += itemResult;
+                    }
+                });
+
             results.push({ dice, points: dicePoints });
         }
 
         // Aplicar efectos de combinación
-        const bonus = await this.applyCombinationsAfterRolls(results, message);
+        const bonus = await this.applyCombinationsAfterRolls(results, message, total);
 
         total += bonus;
+
+        this.items
+            .filter(item => item.type === "afterRoll")
+            .forEach(item => item.applyEffect({ session: this, total, message }));
 
         this.score += total;
 
@@ -291,7 +392,6 @@ class Shop {
     constructor() {
         if (Shop.instance) return Shop.instance;
 
-        this.shopInventory = []; // Global (si querés una tienda global, no por jugador)
         Shop.instance = this;
     }
 
