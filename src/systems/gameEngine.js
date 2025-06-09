@@ -252,6 +252,10 @@ class Battle {
     isVictory(score) {
         return score >= this.targetScore;
     }
+
+    coinsWonPerRound() {
+        return (this.maxRounds - this.currentRound) * 3
+    }
 }
 
 // GameSession.js
@@ -276,11 +280,13 @@ class GameSession {
 
         this.currentBattleIndex = 0;
         this.battles = [
-            new Battle(1, 20, 3),
-            new Battle(2, 40, 3),
-            new Battle(3, 60, 3),
-            new Battle(3, 80, 3),
-            new Battle(3, 100, 3)
+            new Battle(1, 40, 3),
+            new Battle(2, 80, 3),
+            new Battle(3, 100, 3),
+            new Battle(4, 150, 3),
+            new Battle(5, 200, 3),
+            new Battle(5, 250, 3),
+            new Battle(5, 300, 3)
             // Puedes generar dinámicamente más batallas o escalarlas
         ];
     }
@@ -319,6 +325,12 @@ class GameSession {
             if (battle.isVictory(this.score)) {
                 this.currentBattleIndex++;
                 this.resetFirstRound()
+
+                const coinsWonPerRound = battle.coinsWonPerRound()
+                const interest = Math.floor(coinsWonPerRound / 5);
+                const totalCoins = coinsWonPerRound + interest;
+
+                this.coins += totalCoins;
                 if (this.currentBattleIndex >= this.battles.length) {
                     // Puedes generar más batallas o quedarte en la última
                     await message.reply("🎉 ¡Superaste todas las batallas actuales!");
