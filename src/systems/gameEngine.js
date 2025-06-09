@@ -594,7 +594,7 @@ class GameSession {
 
     async acariciar(session, message) {
         session.caricias += 1
-        if(session.caricias === 7) {
+        if(session.caricias === 1) {
             session.coins += 10;
             return message.reply("Hakael te devuelve el favor y deja caer 10 monedas para ti, que Puta")
         }
