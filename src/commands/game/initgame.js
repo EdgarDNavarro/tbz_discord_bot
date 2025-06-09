@@ -20,7 +20,7 @@ module.exports = {
             session.coins = 10;
             session.currentBattleIndex = 0
             session.caricias = 0;
-            session.estado = "playing";
+            session.status = "playing";
 
             session.addDiceFromBag(DiceFactory.createDice("D6"));
             session.addDiceFromBag(DiceFactory.createDice("D6"));

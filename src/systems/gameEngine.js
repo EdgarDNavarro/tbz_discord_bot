@@ -13,8 +13,7 @@ const ITEMS_TYPES = [
     "endurance",
     "gemelos",
     "reflejo",
-    "contador",
-    "hakael"
+    "contador"
 ];
 
 const REROLL_COST = 3;
