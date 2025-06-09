@@ -5,14 +5,11 @@ module.exports = {
         try {
             const userId = message.author.id;
             const store = new Store();
+
             const session = store.getSession(userId);
 
-            const args = message.content.split(" ");
-            const index = Number(args[1])
-
             const shop = new Shop();
-            const bought = shop.buy(session, index)
-            await message.reply(bought);
+            shop.reroll(session, message)
         } catch (err) {
             console.error(err);
             await message.reply(err.message || "❌ Hubo un error.");

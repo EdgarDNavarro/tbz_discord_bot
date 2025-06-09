@@ -4,6 +4,8 @@ function buildGameEmbed(session, username, extraFields = []) {
     const diceBagText = session.getDiceWhitIndexIntText() || "🎲 Ninguno";
     const diceInHandText = session.getDiceInHandText() || "🖐️ Aún no hay dados en mano";
     const dicePlayedText = session.getDicePlayedText() || "🤓 Aún no hay dados jugados";
+
+    const battle = session.currentBattle
     
     const itemsText = session.items.length
         ? session.items.map(i => i.name).join(", ")
@@ -18,7 +20,7 @@ function buildGameEmbed(session, username, extraFields = []) {
     const baseFields = [
         {
             name: "🎯 Puntaje",
-            value: `${session.score} / ${session.targetScore}`,
+            value: `${session.score} / ${battle.targetScore}`,
             inline: true,
         },
         {
@@ -28,7 +30,7 @@ function buildGameEmbed(session, username, extraFields = []) {
         },
         {
             name: "🔄 Ronda",
-            value: `${session.currentRound} / ${session.limitRounds}`,
+            value: `${battle.currentRound} / ${battle.maxRounds}`,
             inline: true,
         },
     ];

@@ -1,4 +1,23 @@
-const DICE_TYPES = ["D4", "D6", "D8", "fireD4", "fireD6", "D4+", "D6+", "undeadD6"];
+const { buildGameEmbed } = require("../utils/buildGameEmbed.js");
+
+const DICE_TYPES = [
+    "D4", "D6", "D8", "D20",
+    "fireD4", "fireD6", "fireD8",
+    "+D4", "+D6", "+D8",
+    "undeadD4", "undeadD6", "undeadD8",
+    "iceD4", "iceD6"
+];
+
+const ITEMS_TYPES = [
+    "doubleFire", 
+    "endurance",
+    "gemelos",
+    "reflejo",
+    "contador",
+    "hakael"
+];
+
+const REROLL_COST = 3;
 
 // Dice.js
 class Dice {
@@ -31,12 +50,14 @@ class DiceFactory {
                 return new Dice("D6", [1, 2, 3, 4, 5, 6], 4, 1);
             case "D8":
                 return new Dice("D8", [1, 2, 3, 4, 5, 6, 7, 8], 5, 2);
+            case "D20":
+                return new Dice("D20", [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], 7, 3);
             case "fireD4":
                 return new Dice(
                     "fireD4", 
                     [1, 2, 3, 4], 
-                    7,
-                    3,
+                    11,
+                    4,
                     "fire",
                     (acc) => Math.ceil(acc * 0.5)
                 );
@@ -44,15 +65,35 @@ class DiceFactory {
                 return new Dice(
                     "fireD6", 
                     [1, 2, 3, 4, 5, 6], 
-                    7,
-                    3,
+                    12,
+                    4,
                     "fire",
                     (acc) => Math.ceil(acc * 0.5)
                 );
-            case "D4+":
-                return new Dice("D4+", [3, 4, 5, 6], 6, 2);
-            case "D6+":
-                return new Dice("D6+", [3, 4, 5, 6, 7, 8], 8, 3);
+            case "fireD8":
+                return new Dice(
+                    "fireD8", 
+                    [1, 2, 3, 4, 5, 6, 7, 8], 
+                    15,
+                    5,
+                    "fire",
+                    (acc) => Math.ceil(acc * 0.5)
+                );
+            case "+D4":
+                return new Dice("+D4", [3, 4, 5, 6], 6, 2);
+            case "+D6":
+                return new Dice("+D6", [3, 4, 5, 6, 7, 8], 8, 3);
+            case "+D8":
+                return new Dice("+D8", [3, 4, 5, 6, 7, 8, 9, 10], 10, 3);
+            case "undeadD4":
+                return new Dice(
+                    "undeadD4", 
+                    [1, 2, 3, 4], 
+                    6,
+                    3,
+                    "undead",
+                    (playedDice) => playedDice * 2
+                );
             case "undeadD6":
                 return new Dice(
                     "undeadD6", 
@@ -61,6 +102,37 @@ class DiceFactory {
                     3,
                     "undead",
                     (playedDice) => playedDice * 2
+                );
+            case "undeadD8":
+                return new Dice(
+                    "undeadD8", 
+                    [1, 2, 3, 4, 5, 6, 7, 8], 
+                    7,
+                    3,
+                    "undead",
+                    (playedDice) => playedDice * 2
+                );
+            case "iceD4":
+                return new Dice(
+                    "iceD4", 
+                    [6, 7, 8, 9], 
+                    7,
+                    2,
+                    "ice",
+                    function () {
+                        this.faces = this.faces.map(face => Math.max(1, face - 1));
+                    }
+                );
+            case "iceD6":
+                return new Dice(
+                    "iceD6", 
+                    [6, 7, 8, 9, 10, 11], 
+                    7,
+                    2,
+                    "ice",
+                    function () {
+                        this.faces = this.faces.map(face => Math.max(1, face - 1));
+                    }
                 );
             // case "fireD6":
             //     return new Dice(
@@ -85,11 +157,11 @@ class Item {
         this.effect = effect; // función o clase que modifique dados o scores
     }
 
-    applyEffect(properties) {
+    async applyEffect (properties) {
         // properties = {session, dice, dieFace, total, diePoints, message}
         // Aplica efecto sobre la sesión de juego
         if (typeof this.effect === "function") {
-            this.effect(properties);
+            return await this.effect(properties);
         }
     }
 }
@@ -98,43 +170,61 @@ class Item {
 class ItemFactory {
     static createItem(name) {
         switch (name) {
-            // case "doubleFire":
-            //     return new Item("Double Fire", "inRoll", ({ dice, dieFace, total, session, message }) => {
-            //         if (dice.element === "fire") {
-            //             const extra = Math.ceil(total * 0.5);
-            //             session.score += extra;
-            //             message.reply(`🔥 Double Fire: ¡El fuego arde más fuerte! +${extra} puntos extra.`);
-            //         }
-            //     });
+            case "doubleFire":
+                return new Item("Double Fire", "inRollPoints", async ({ die, total, message }) => {
+                    if (die.element === "fire") {
+                        const extra = Math.ceil(total * 0.5);
+                        await message.reply(`🔥 Double Fire: ¡El fuego arde más fuerte! +${extra} puntos extra.`);
+                        return extra;
+                    }
+                });
+
+            case "hakael":
+                return new Item("Hakael el gato", "inRollFace", async ({ message }) => {
+                    if (Math.random() < 0.5) {
+
+                        await message.reply(`😼🤡 hakael el gato payaso: ¡El gato anda jodiendo por ahi, no le prestes atencion`);
+                        return 0;
+                    }
+                });
 
             case "endurance":
-                return new Item("Endurance Medal", "afterRoll", ({ total, session, message }) => {
+                return new Item("Endurance Medal", "afterRoll", async ({ total, session, message }) => {
                     if (total > 15) {
-                        session.score += 2;
-                        message.reply("🏅 Endurance Medal: +2 puntos por una ronda intensa.");
+                        session.roundTotalScore += 5;
+                        await message.reply("🏅 Endurance Medal: +5 puntos por una ronda intensa.");
                     }
                 });
 
             case "gemelos":
-                return new Item("Gemelos", "inRoll", ({ dice, dieFace, total, session, diePoints, message }) => {
+                return new Item("Gemelos", "inRollPoints", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
                     //si es multiplo de 2 mupltiplica por 2
-                    if (dieFace % 2 === 0) {
-                        const extra = dieFace * 2;
+                    if (rollResult % 2 === 0) {
+                        const extra = diePoints * 0.5;
                         
-                        message.reply(`👯 Gemelos: ¡Multiplicaste por 2! +${dieFace} puntos.`);
+                        await message.reply(`👯 Gemelos: ¡Multiplicaste el total del dado por 1.5! +${dieFace} puntos.`);
                         return extra;
                     }
                 });
 
             case "reflejo":
-                return new Item("Reflejo", "inRoll", ({ dice, dieFace, total, session, diePoints, message }) => {
+                return new Item("Reflejo", "inRollFace", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
                     //Probabiliad de 50% de que esa cara puntue dos veces
                     if (Math.random() < 0.5) {
-                        const extra = diePoints;
+                        const extra = dieFace;
 
-                        message.reply(`🔮 Reflejo: ¡Tu dado puntúa dos veces! +${diePoints} puntos.`);
+                        await message.reply(`🔮 Reflejo: ¡La cara de tu dado puntúa dos veces! +${extra} puntos a la cara.`);
                         return extra;
                     }
+                });
+
+            case "contador":
+                return new Item("Contador de la Mafia", "inRollPoints", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
+                    //Probabiliad de 50% de que esa cara puntue dos veces
+                    const extra = die.faces.length * 0.5;
+
+                    await message.reply(`🧮 Contador de la Mafia: ¡+0,5 punto por cada cara del dado! +${extra} puntos.`);
+                    return extra;
                 });
 
             default:
@@ -143,6 +233,26 @@ class ItemFactory {
     }
 }
 
+class Battle {
+    constructor(id, targetScore, maxRounds) {
+        this.id = id;
+        this.targetScore = targetScore;
+        this.maxRounds = maxRounds;
+        this.currentRound = 0;
+    }
+
+    nextRound() {
+        this.currentRound++;
+    }
+
+    isOver() {
+        return this.currentRound >= this.maxRounds;
+    }
+
+    isVictory(score) {
+        return score >= this.targetScore;
+    }
+}
 
 // GameSession.js
 class GameSession {
@@ -154,13 +264,39 @@ class GameSession {
         this.items = []; // Items que tiene el jugador
         this.score = 0;
         this.coins = 5;
+        this.inflation = 0;
         this.currentShopInventory = [];
-        this.currentRound = 1;
         this.status = "playing"; // 'playing', 'lost', 'won'
         this.limitDiceBag = 10;
         this.limitDiceRound = 3;
-        this.limitRounds = 3;
-        this.targetScore = 20;
+
+        this.roundTotalScore = 0;
+
+        this.caricias = 0;
+
+        this.currentBattleIndex = 0;
+        this.battles = [
+            new Battle(1, 20, 3),
+            new Battle(2, 40, 3),
+            new Battle(3, 60, 3),
+            new Battle(3, 80, 3),
+            new Battle(3, 100, 3)
+            // Puedes generar dinámicamente más batallas o escalarlas
+        ];
+    }
+
+    get currentBattle() {
+        return this.battles[this.currentBattleIndex];
+    }
+
+    resetFirstRound() {
+        this.diceBag = this.dicePlayed;
+        this.dicePlayed = [];
+        this.diceBag.push(...this.diceInHand);
+        this.diceInHand = [];
+        this.score = 0;
+        this.inflation = 0;
+        this.currentShopInventory = [];
     }
 
     startRound() {
@@ -175,11 +311,34 @@ class GameSession {
         }
     }
 
-    nextRound() {
-        this.currentRound++;
-        if (this.currentRound > this.limitRounds) {
-            this.status =
-                this.score >= this.targetScore ? "won" : "lost";
+    async nextRound(message) {
+        const battle = this.currentBattle;
+        battle.nextRound();
+
+        if (battle.isOver()) {
+            if (battle.isVictory(this.score)) {
+                this.currentBattleIndex++;
+                this.resetFirstRound()
+                if (this.currentBattleIndex >= this.battles.length) {
+                    // Puedes generar más batallas o quedarte en la última
+                    await message.reply("🎉 ¡Superaste todas las batallas actuales!");
+                } else {
+                    await message.reply(`✅ Superaste la batalla ${battle.id}. Comienza la batalla ${this.currentBattle.id}!`);
+                }
+            } else {
+                this.status = "lost";
+                await message.reply("❌ Perdiste la batalla. No alcanzaste el puntaje requerido.");
+            }
+        }else if (battle.isVictory(this.score)) {
+            this.currentBattleIndex++;
+            this.resetFirstRound()
+            if (this.currentBattleIndex >= this.battles.length) {
+                // Puedes generar más batallas o quedarte en la última
+                
+                await message.reply("🎉 ¡Superaste todas las batallas actuales!");
+            } else {
+                await message.reply(`✅ Superaste la batalla ${battle.id}. Comienza la batalla ${this.currentBattle.id}!`);
+            }
         }
     }
 
@@ -237,118 +396,152 @@ class GameSession {
             await message.reply(`🔥 Bonus: ${fireCount} dado(s) de fuego → +${fireCount} punto(s)`);
         }
 
-        return bonus;
+        this.roundTotalScore += bonus;
     }
 
-    async applyCombinationsAfterRolls(results, message, total) {
+    async applyCombinationsAfterRolls(results, message) {
         let bonus = 0;
 
         // 🧮 Regla: Solo un dado lanzado → multiplicar por 1.5
         if (results.length === 1) {
-            const extra = Math.ceil(total * 0.5);
+            const extra = Math.ceil(this.roundTotalScore * 0.5);
             bonus += extra;
             await message.reply(`🧮 Bonus: Al lanzar solo 1 dado, se aplica x1.5 → +${extra} puntos`);
         }
 
-        // Si lanzaste 2 o mas y dos de ellos sacaron la misma caras (pero no 3 sacaron las mismas caras) multiplicas por 1.5
-        if (results.length >= 2) {
-            const faceCounts = {};
-            results.forEach(result => {
-                faceCounts[result.points] = (faceCounts[result.points] || 0) + 1;
-            });
+        let appliedBonus = false;
 
-            const pairs = Object.values(faceCounts).filter(count => count >= 2);
-            if (pairs.length > 0 && pairs.length < 3) {
-                const extra = Math.ceil((total + bonus) * 0.5);
-                bonus += extra;
-                await message.reply(`🧮 Bonus: Dos Dados sacaron la misma cara, se aplica x1.5 → +${extra} extras puntos`);
-            }
+        // Si lanzaste 3 dados y el resultado de los 3 fue igual → x2
+        if (results.length === 3 && results.every(result => result.rollResult === results[0].rollResult)) {
+            const extra = (this.roundTotalScore + bonus) * 2; 
+            bonus += extra;
+            await message.reply(`🎲 Bonus: Los 3 dados sacaron ${results[0].rollResult}, se multiplica el total por 2 y se suma → +${extra} puntos`);
+            appliedBonus = true;
         }
 
-        // Si lanzaste 3 dados y el resultado de las 3 fue igual multiplica por 3
-        if (results.length === 3 && results.every(result => result.points === results[0].points)) {
-            const extra = (total + bonus) * 2; 
-            bonus += extra;
-            await message.reply(`🎲 Bonus: Los 3 dados sacaron ${results[0].points}, se multiplica el total por 2 y se suma → +${extra} extras puntos`);
+        // Si lanzaste 2 o más y dos sacaron la misma cara (pero no todos) → x1.5
+        if (!appliedBonus && results.length >= 2) {
+            const faceCounts = {};
+            results.forEach(result => {
+                faceCounts[result.rollResult] = (faceCounts[result.rollResult] || 0) + 1;
+            });
+
+            const hasPair = Object.values(faceCounts).some(count => count === 2);
+            if (hasPair) {
+                const extra = Math.ceil((this.roundTotalScore + bonus) * 0.5);
+                bonus += extra;
+                await message.reply(`🧮 Bonus: Dos dados sacaron la misma cara, se aplica x1.5 → +${extra} puntos`);
+            }
         }
 
         return bonus;
     }
 
-
     async rollDice(message) {
-        let total = 0;
-        let dicePoints = 0;
+        if(this.status === "lost") return message.reply("❌ Ya pardiste esta partida. Escribe \`!initgame \` para empezar otra")
+
         const results = []; 
 
-        const preBonus = await this.applyCombinationsBeforeRolls(this.diceInHand, message)
-        total += preBonus;
+        await this.applyCombinationsBeforeRolls(this.diceInHand, message)
 
-            // 🎯 BEFORE ROLL ITEMS
         this.items
             .filter(item => item.type === "beforeRoll")
             .forEach(item => item.applyEffect({ session: this, message }));
 
-        for (const dice of this.diceInHand) {
-            dicePoints = 0
-            const diceFace = dice.roll(total);
+        for (const die of this.diceInHand) {
 
-            if(dice.element === "fire") {
-                dicePoints += diceFace;
-                total += diceFace;
+            const rollResult = die.roll();
+            await message.reply(`🎲 Tiraste el dado ${die.type} y cayo: ${rollResult}`);
+            let dicePoints = 0;
+            let dieFace = rollResult
 
-                const effectResult = dice.effect(total)
-
-                total += effectResult;
-                dicePoints += effectResult;
-                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${diceFace} + 🔥 Fuego: Mitad del total de la ronda: ${effectResult}, Total: ${dicePoints}`);
-            } else if (dice.element === "undead") {
-                dicePoints += diceFace;
-                total += diceFace;
-
-                const effectResult = dice.effect(this.dicePlayed.length)
-                total += effectResult;
-                dicePoints += effectResult;
-                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${diceFace} + 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados: ${this.dicePlayed.length} + 2 = ${effectResult}, Total: ${dicePoints}`);
-            } else if (typeof diceFace === "object" && diceFace.function) {
-                dicePoints += diceFace.function(total);
-                total += dicePoints;
-                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints} (${diceFace.description})`);
-            } else {
-                dicePoints += diceFace;
-                total += dicePoints;
-                await message.reply(`Tiraste el dado ${dice.type} y obtuviste: ${dicePoints}`);
-            }
-
-            this.items
-                .filter(item => item.type === "inRoll")
-                .forEach(item => {
-                    const itemResult = item.applyEffect({ session: this, dice, dieFace: diceFace, total, diePoints: dicePoints, message });
-                    if (itemResult) {
-                        total += itemResult;
-                    }
+            for (const item of this.items.filter(item => item.type === "inRollFace")) {
+                const itemResult = await item.applyEffect({
+                    session: this,
+                    die,
+                    dieFace,
+                    total: this.roundTotalScore,
+                    diePoints: dicePoints,
+                    message,
+                    rollResult,
                 });
 
-            results.push({ dice, points: dicePoints });
+                if (itemResult) {
+                    dieFace += itemResult;
+                }
+            }
+
+
+            if(die.element === "fire") {
+                dicePoints += dieFace;
+                this.roundTotalScore += dieFace;
+
+                const effectResult = die.effect(this.roundTotalScore)
+
+                this.roundTotalScore += effectResult;
+                dicePoints += effectResult;
+                await message.reply(`+ 🔥 Fuego: Mitad del total de la ronda: ${effectResult}`);
+            } else if (die.element === "undead") {
+                dicePoints += dieFace;
+                this.roundTotalScore += dieFace;
+
+                const effectResult = die.effect(this.dicePlayed.length)
+                this.roundTotalScore += effectResult;
+                dicePoints += effectResult;
+                await message.reply(`+ 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados: ${this.dicePlayed.length} * 2 = ${effectResult}`);
+            } else if (die.element === "ice") {
+                dicePoints += dieFace;
+                this.roundTotalScore += dieFace;
+
+                die.effect()
+
+                await message.reply(`+ 🧊 Dado de hielo: Se empeiza a derretir, -1 punto en cada cara del dado`);
+            } else if (typeof dieFace === "object" && dieFace.function) {
+                dicePoints += dieFace.function(this.roundTotalScore);
+                this.roundTotalScore += dicePoints;
+                await message.reply(`El Dado ${die.type} obtuvo un total de cara de: ${dicePoints} (${dieFace.description})`);
+            } else {
+                dicePoints += dieFace;
+                this.roundTotalScore += dicePoints;
+            }
+
+            for (const item of this.items.filter(item => item.type === "inRollPoints")) {
+                const itemResult = await item.applyEffect({ session: this, die, dieFace, total: this.roundTotalScore, diePoints: dicePoints, message, rollResult });
+
+                if (itemResult) {
+                    this.roundTotalScore += itemResult;
+                    dicePoints += itemResult;
+                }
+            }
+
+            results.push({ die, points: dicePoints, rollResult });
         }
 
-        // Aplicar efectos de combinación
-        const bonus = await this.applyCombinationsAfterRolls(results, message, total);
+        const bonus = await this.applyCombinationsAfterRolls(results, message, this.roundTotalScore);
 
-        total += bonus;
+        this.roundTotalScore += bonus;
 
-        this.items
-            .filter(item => item.type === "afterRoll")
-            .forEach(item => item.applyEffect({ session: this, total, message }));
+        for (const item of this.items.filter(item => item.type === "afterRoll")) {
+            await item.applyEffect({ session: this, total: this.roundTotalScore, message })
+        }
 
-        this.score += total;
+        this.score += this.roundTotalScore;
 
-        return total;
+        const extraFields = [
+            { name: "🔥 Total lanzado esta ronda", value: `${this.roundTotalScore}`, inline: false }
+        ];
+
+        await this.nextRound(message);
+        this.startRound()
+
+        const embed = buildGameEmbed(this, message.author.username, extraFields);
+        await message.reply({ embeds: [embed] });
+        this.roundTotalScore = 0;
     }
 
     currentStatus() {
         return {
-            ronda: this.currentRound,
+            ronda: this.playedRounds,
             score: this.score,
             status: this.status,
         };
@@ -386,6 +579,15 @@ class GameSession {
             ${dice.element ? `**Elementos:** ${dice.element}` : ""}
         `.trim();
     }
+
+    async acariciar(session, message) {
+        session.caricias += 1
+        if(session.caricias === 7) {
+            session.coins += 10;
+            return message.reply("Hakael te devuelve el favor y deja caer 10 monedas para ti, que Puta")
+        }
+        await message.reply("Hakael te mira con cariño, le gustan mucho las caricias")
+    }
 }
 
 class Shop {
@@ -400,24 +602,46 @@ class Shop {
         const haveShopInventory = session.currentShopInventory && session.currentShopInventory.length > 0;
         
         const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 3);
-        const dice = haveShopInventory ? session.currentShopInventory : randomDiceTypes.map(type => DiceFactory.createDice(type));
+        const randomItemType = ITEMS_TYPES[Math.floor(Math.random() * ITEMS_TYPES.length)];
+
+        const dice = haveShopInventory
+            ? session.currentShopInventory.filter(x => x.kind === "die")
+            : randomDiceTypes.map(type => ({
+                kind: "die",
+                data: DiceFactory.createDice(type),
+            }));
+
+        const item = haveShopInventory
+            ? session.currentShopInventory.find(x => x.kind === "item")
+            : {
+                kind: "item",
+                data: {
+                    type: randomItemType,
+                    price: 10,
+                }
+            };
 
         // Guardar esta "oferta" temporal en la sesión del jugador
         if(!haveShopInventory) {
-            session.currentShopInventory = dice;
+            session.currentShopInventory = [...dice, item];
         }
 
         // Formatear el texto
         const textoTienda = [
-            `🛒 **¡Bienvenido a la Tienda de Dados!**`,
+            `🛒 **¡Bienvenido a la Tienda de Dados e Items!**`,
             `Tienes 🪙 ${session.coins} monedas.`,
             ``,
-            ...dice.map((die, index) => {
+            ...dice.map((entry, index) => {
+                const die = entry.data;
                 const elementText = die.element ? ` | Elemento: ${die.element}` : "";
-                return `**#${index}** - ${die.type} (Caras: ${die.faces.join(", ")})${elementText} | 💰 ${die.purchasePrice} monedas`;
+                return `**#${index}** - 🎲 ${die.type} (Caras: ${die.faces.join(", ")})${elementText} | 💰 ${die.purchasePrice} monedas`;
             }),
             ``,
-            `Escribe \`!buy <número>\` para comprar uno.`
+            `**#${dice.length}** - 🧩 Ítem: ${item.data.type} | 💰 ${item.data.price} monedas`,
+            ``,
+            `Escribe \`!buy <número>\` para comprar uno.`,
+            `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual mas inflacion: ${REROLL_COST + session.inflation}`,
+            `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
 
         return message.reply(textoTienda);
@@ -435,19 +659,78 @@ class Shop {
             index >= session.currentShopInventory.length
         ) throw new Error("❌ Índice de dado no válido.");
 
-        const die = session.currentShopInventory[index];
+        const entry = session.currentShopInventory[index];
 
-        if (session.coins < die.purchasePrice) throw new Error("❌ No tienes suficientes monedas.");
-        if (session.diceBag.length >= session.limitDiceBag) throw new Error("❌ Límite de dados en el bolsillo alcanzado.");
+        if (entry.kind === "die") {
+            const die = entry.data;
+            if (session.coins < die.purchasePrice) throw new Error("❌ No tienes suficientes monedas.");
+            if (session.diceBag.length >= session.limitDiceBag) throw new Error("❌ Límite de dados en el bolsillo alcanzado.");
+            
+            session.coins -= die.purchasePrice;
+            session.addDiceFromBag(die);
+            session.currentShopInventory.splice(index, 1);
+            return `✅ Compraste el dado ${die.type} por ${die.purchasePrice} monedas.`;
+        }
 
-        
+        if (entry.kind === "item") {
+            const item = entry.data;
+            if (session.coins < item.price) throw new Error("❌ No tienes suficientes monedas.");
 
-        // Efectuar la compra
-        session.coins -= die.purchasePrice;
-        session.addDiceFromBag(die);
-        session.currentShopInventory.splice(index, 1);
+            session.coins -= item.price;
+            session.addItem(ItemFactory.createItem(item.type));
+            session.currentShopInventory.splice(index, 1);
+            return `✅ Compraste el ítem ${item.type} por ${item.price} monedas.`;
+        }
 
-        return `✅ Compraste el dado ${die.type} por ${die.purchasePrice} monedas.`;
+    }
+
+    reroll(session, message) {
+        const shop = session.currentShopInventory;
+        if (!shop || !Array.isArray(shop) || shop.length === 0) {
+            throw new Error("❌ No hay tienda activa. Usa `!shop` para ver opciones.");
+        }
+
+        const costInflation = REROLL_COST + session.inflation
+
+        if(session.coins < costInflation) throw new Error(`❌ No tiene monedas suficiente. el reroll cuesta ${REROLL_COST} + inflacion: ${session.inflation}`);
+        session.coins -= costInflation;
+
+        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 3);
+        const randomItemType = ITEMS_TYPES[Math.floor(Math.random() * ITEMS_TYPES.length)];
+
+        const dice = randomDiceTypes.map(type => ({
+            kind: "die",
+            data: DiceFactory.createDice(type),
+        }));
+        const item = {
+            kind: "item",
+            data: {
+                type: randomItemType,
+                price: 10,
+            }
+        };
+
+        session.currentShopInventory = [...dice, item];
+
+        // Formatear el texto
+        const textoTienda = [
+            `🛒 **¡Nuevo stock en la Tienda!**`,
+            `Tienes 🪙 ${session.coins} monedas.`,
+            ``,
+            ...dice.map((entry, index) => {
+                const die = entry.data;
+                const elementText = die.element ? ` | Elemento: ${die.element}` : "";
+                return `**#${index}** - 🎲 ${die.type} (Caras: ${die.faces.join(", ")})${elementText} | 💰 ${die.purchasePrice} monedas`;
+            }),
+            ``,
+            `**#${dice.length}** - 🧩 Ítem: ${item.data.type} | 💰 ${item.data.price} monedas`,
+            ``,
+            `Escribe \`!buy <número>\` para comprar uno.`,
+            `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual más inflación: ${REROLL_COST + session.inflation}`,
+            `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
+        ].join("\n");
+        session.inflation += 1;
+        return message.reply(textoTienda);
     }
 }
 

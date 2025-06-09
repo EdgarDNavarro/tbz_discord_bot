@@ -15,9 +15,7 @@ module.exports = {
 
         } catch (err) {
             console.error(err);
-            await message.reply(
-                "❌ Hubo un error al iniciar la partida. Intenta nuevamente."
-            );
+            await message.reply(err.message || "❌ Hubo un error.")
         }
     },
 };

@@ -1,5 +1,4 @@
 const { Store } = require("../../systems/gameEngine.js");
-const { buildGameEmbed } = require("../../utils/buildGameEmbed.js");
 
 module.exports = {
     async run(message) {
@@ -15,22 +14,10 @@ module.exports = {
                 );
             }
 
-            const roundTotal = await session.rollDice(message);
-
-            const extraFields = [
-                { name: "🔥 Total lanzado esta ronda", value: `${roundTotal}`, inline: false }
-            ];
-
-            session.nextRound();
-            session.startRound()
-
-            const embed = buildGameEmbed(session, message.author.username, extraFields);
-            await message.reply({ embeds: [embed] });
+            await session.rollDice(message);
         } catch (err) {
             console.error(err);
-            await message.reply(
-                "❌ Hubo un error al tirar los dados. Intenta nuevamente."
-            );
+            await message.reply(err.message || "❌ Hubo un error.")
         }
     },
 };
