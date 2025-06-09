@@ -330,7 +330,8 @@ class GameSession {
                 const interest = Math.floor(coinsWonPerRound / 5);
                 const totalCoins = coinsWonPerRound + interest;
 
-                this.coins += totalCoins;
+                this.coins += totalCoins + 5;
+                await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + ${interest} + 5 de cortesía `)
                 if (this.currentBattleIndex >= this.battles.length) {
                     // Puedes generar más batallas o quedarte en la última
                     await message.reply("🎉 ¡Superaste todas las batallas actuales!");
@@ -344,6 +345,14 @@ class GameSession {
         }else if (battle.isVictory(this.score)) {
             this.currentBattleIndex++;
             this.resetFirstRound()
+
+            const coinsWonPerRound = battle.coinsWonPerRound()
+            const interest = Math.floor(coinsWonPerRound / 5);
+            const totalCoins = coinsWonPerRound + interest;
+
+            this.coins += totalCoins + 5;
+            await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + ${interest} + 5 de cortesía `)
+
             if (this.currentBattleIndex >= this.battles.length) {
                 // Puedes generar más batallas o quedarte en la última
                 
