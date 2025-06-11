@@ -403,11 +403,7 @@ class GameSession {
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D4"));
-        this.addDiceFromBag(DiceFactory.createDice("goldD4"));
-        this.addDiceFromBag(DiceFactory.createDice("goldD4"));
-        this.addDiceFromBag(DiceFactory.createDice("goldD6"));
-        this.addDiceFromBag(DiceFactory.createDice("goldD6"));
-        
+       
 
         // this.addItem(ItemFactory.createItem("hakael"));
     }
