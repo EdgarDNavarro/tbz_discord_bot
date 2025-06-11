@@ -11,7 +11,7 @@ module.exports = {
             const index = Number(args[1])
 
             const shop = new Shop();
-            const bought = shop.buy(session, index)
+            const bought = await shop.buy(session, index, message)
             await message.reply(bought);
         } catch (err) {
             console.error(err);
