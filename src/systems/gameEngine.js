@@ -439,7 +439,7 @@ class GameSession {
 
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D6"));
-        this.addDiceFromBag(DiceFactory.createDice("peso"));
+        this.addDiceFromBag(DiceFactory.createDice("D4"));
 
         // this.addItem(ItemFactory.createItem("hakael"));
     }
