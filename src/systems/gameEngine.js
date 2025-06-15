@@ -62,7 +62,7 @@ class DiceFactory {
                 return new Dice(
                     "fireD4", 
                     [1, 2, 3, 4], 
-                    11,
+                    10,
                     4,
                     "fire",
                     (acc) => Math.ceil(acc * 0.5)
@@ -71,7 +71,7 @@ class DiceFactory {
                 return new Dice(
                     "fireD6", 
                     [1, 2, 3, 4, 5, 6], 
-                    12,
+                    11,
                     4,
                     "fire",
                     (acc) => Math.ceil(acc * 0.5)
@@ -80,7 +80,7 @@ class DiceFactory {
                 return new Dice(
                     "fireD8", 
                     [1, 2, 3, 4, 5, 6, 7, 8], 
-                    15,
+                    12,
                     5,
                     "fire",
                     (acc) => Math.ceil(acc * 0.5)
@@ -88,9 +88,9 @@ class DiceFactory {
             case "+D4":
                 return new Dice("+D4", [3, 4, 5, 6], 6, 2);
             case "+D6":
-                return new Dice("+D6", [3, 4, 5, 6, 7, 8], 8, 3);
+                return new Dice("+D6", [3, 4, 5, 6, 7, 8], 7, 3);
             case "+D8":
-                return new Dice("+D8", [3, 4, 5, 6, 7, 8, 9, 10], 10, 3);
+                return new Dice("+D8", [3, 4, 5, 6, 7, 8, 9, 10], 8, 3);
             case "undeadD4":
                 return new Dice(
                     "undeadD4", 
@@ -185,7 +185,7 @@ class DiceFactory {
                 return new Dice(
                     "euro", 
                     [true, false], 
-                    16,
+                    11,
                     5,
                     "currency",
                     (total) => total * 2
@@ -194,7 +194,7 @@ class DiceFactory {
                 return new Dice(
                     "peso", 
                     [true, false], 
-                    16,
+                    11,
                     5,
                     "currency"
                 );
@@ -375,23 +375,10 @@ class Battle {
     }
 
     coinsWonPerRound() {
-        return (this.maxRounds - this.currentRound) * 3
+        return (this.maxRounds - this.currentRound) * 4
     }
 }
 
-const INIT_BATTLES = [
-    new Battle(1, 40, 3),
-    new Battle(2, 50, 3),
-    new Battle(3, 60, 3),
-    new Battle(4, 150, 3),
-    new Battle(5, 200, 3),
-    new Battle(5, 250, 3),
-    new Battle(5, 300, 3),
-    new Battle(5, 450, 3),
-    new Battle(5, 600, 3),
-    new Battle(5, 800, 3),
-    new Battle(5, 1000, 3)
-];
 
 // GameSession.js
 class GameSession {
@@ -416,7 +403,21 @@ class GameSession {
         this.itemsTypes = ITEMS_TYPES;
 
         this.currentBattleIndex = 0;
-        this.battles = INIT_BATTLES
+        this.battles = [
+            new Battle(1, 40, 3),
+            new Battle(2, 50, 3),
+            new Battle(3, 60, 3),
+            new Battle(4, 80, 3),
+            new Battle(4, 100, 3),
+            new Battle(4, 150, 3),
+            new Battle(5, 200, 3),
+            new Battle(5, 250, 3),
+            new Battle(5, 300, 3),
+            new Battle(5, 450, 3),
+            new Battle(5, 600, 3),
+            new Battle(5, 800, 3),
+            new Battle(5, 1000, 3)
+        ]
     }
 
     get currentBattle() {
@@ -435,7 +436,21 @@ class GameSession {
         this.caricias = 0;
         this.status = "playing";
         this.itemsTypes = ITEMS_TYPES;
-        this.battles = INIT_BATTLES
+        this.battles = [
+            new Battle(1, 40, 3),
+            new Battle(2, 50, 3),
+            new Battle(3, 60, 3),
+            new Battle(4, 80, 3),
+            new Battle(4, 100, 3),
+            new Battle(4, 150, 3),
+            new Battle(5, 200, 3),
+            new Battle(5, 250, 3),
+            new Battle(5, 300, 3),
+            new Battle(5, 450, 3),
+            new Battle(5, 600, 3),
+            new Battle(5, 800, 3),
+            new Battle(5, 1000, 3)
+        ]
 
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D6"));
