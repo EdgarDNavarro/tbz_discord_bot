@@ -602,8 +602,8 @@ class GameSession {
         // 👻 Regla: Por cada dado con elemento undead → +2 punto por cada dado en el cementerio
         const undeadCount = this.diceInHand.filter(( dice ) => dice.element === "undead").length;
         if (undeadCount > 0) {
-            bonus += undeadCount * this.playedDice;
-            await message.reply(`👻 Bonus: ${undeadCount} dado(s) undead → +${undeadCount * this.playedDice} punto(s). 1 punto por cada dado en cementerio por cada dado`);
+            bonus += undeadCount * (this.playedDice.length || 0);
+            await message.reply(`👻 Bonus: ${undeadCount} dado(s) undead → +${undeadCount * (this.playedDice.length || 0)} punto(s). 1 punto por cada dado en cementerio por cada dado`);
         }
 
         // 🧊 Regla: Por cada dado con elemento ice → +2 punto por cada dado
