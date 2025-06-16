@@ -98,7 +98,7 @@ class DiceFactory {
                     6,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 2) * 2
+                    (playedDice) => (playedDice + 1) * 2
                 );
             case "undeadD6":
                 return new Dice(
@@ -107,7 +107,7 @@ class DiceFactory {
                     7,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 2) * 2
+                    (playedDice) => (playedDice + 1) * 2
                 );
             case "undeadD8":
                 return new Dice(
@@ -116,7 +116,7 @@ class DiceFactory {
                     7,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 2) * 2
+                    (playedDice) => (playedDice + 1) * 2
                 );
             case "iceD4":
                 return new Dice(
@@ -339,7 +339,7 @@ class ItemFactory {
                         if(!die.element) {
                             die.type = "undead"+die.type
                             die.element = "undead"
-                            die.effect = (playedDice) => (playedDice + 2) * 2
+                            die.effect = (playedDice) => (playedDice + 1) * 2
                             return die
                         }
                         return die
@@ -390,7 +390,7 @@ class GameSession {
         this.items = []; // Items que tiene el jugador
         this.itemStacks = {}; 
         this.score = 0;
-        this.coins = 5;
+        this.coins = 10;
         this.inflation = 0;
         this.currentShopInventory = [];
         this.status = "playing"; // 'playing', 'lost', 'won'
@@ -425,17 +425,25 @@ class GameSession {
     }
 
     initGame() {
-        this.diceBag = [];
-        this.diceInHand = [];
-        this.items = [];
-        this.dicePlayed = [];
-        this.itemStacks = {};
+        this.diceBag = []; // Dados que tiene el jugador
+        this.diceInHand = []; // Dados usados en la ronda
+        this.dicePlayed = []; // Dados que ya se han jugado
+        this.items = []; // Items que tiene el jugador
+        this.itemStacks = {}; 
         this.score = 0;
         this.coins = 10;
-        this.currentBattleIndex = 0
+        this.inflation = 0;
+        this.currentShopInventory = [];
+        this.status = "playing"; // 'playing', 'lost', 'won'
+        this.limitDiceBag = 10;
+        this.limitDiceRound = 3;
+
+        this.roundTotalScore = 0;
+
         this.caricias = 0;
-        this.status = "playing";
         this.itemsTypes = ITEMS_TYPES;
+
+        this.currentBattleIndex = 0;
         this.battles = [
             new Battle(1, 40, 3),
             new Battle(2, 50, 3),
@@ -602,8 +610,8 @@ class GameSession {
         // 👻 Regla: Por cada dado con elemento undead → +2 punto por cada dado en el cementerio
         const undeadCount = this.diceInHand.filter(( dice ) => dice.element === "undead").length;
         if (undeadCount > 0) {
-            bonus += undeadCount * (this.playedDice.length || 0);
-            await message.reply(`👻 Bonus: ${undeadCount} dado(s) undead → +${undeadCount * (this.playedDice.length || 0)} punto(s). 1 punto por cada dado en cementerio por cada dado`);
+            bonus += undeadCount * (this.dicePlayed.length || 0);
+            await message.reply(`👻 Bonus: ${undeadCount} dado(s) undead → +${undeadCount * (this.dicePlayed.length || 0)} punto(s). 1 punto por cada dado en cementerio por cada dado`);
         }
 
         // 🧊 Regla: Por cada dado con elemento ice → +2 punto por cada dado
@@ -712,7 +720,7 @@ class GameSession {
                     const effectResult = die.effect(this.dicePlayed.length)
                     this.roundTotalScore += effectResult;
                     dicePoints += effectResult;
-                    await message.reply(`+ 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados: ${this.dicePlayed.length} * 2 = ${effectResult}`);
+                    await message.reply(`+ 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados + 1: ${this.dicePlayed.length} + 1 * 2 = ${effectResult}`);
                 } else if (die.element === "ice") {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
