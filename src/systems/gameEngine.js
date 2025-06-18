@@ -45,7 +45,7 @@ class Dice {
     }
 
     upgradeFace() {
-        if(this.upgrades.length >= 4) return
+        if(this.upgrades.length >= 5) return
 
         const possibleUpgradeValues = [3, 4, 5, 6]
         this.upgrades.push("+")
@@ -357,6 +357,17 @@ class ItemFactory {
                     return 0;
                 });
 
+            case "joker":
+                return new Item("Joker", "specials", async ({ message, session }) => {
+                    const battle = session.currentBattle
+
+                    if(battle.currentRound + 1 === battle.maxRounds ) {
+                        await message.reply(`:black_joker: Joker: ¡La ultima ronda se vuelve a lanzar`);
+                        return true
+                    }
+                    return false;
+                });
+
             default:
                 throw new Error("Item no soportado");
         }
@@ -473,7 +484,7 @@ class GameSession {
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D4"));
 
-        // this.addItem(ItemFactory.createItem("hakael"));
+        this.addItem(ItemFactory.createItem("joker"));
     }
 
     async resetFirstRound(message) {
@@ -685,10 +696,13 @@ class GameSession {
         let index = 0;
         let loopCount = 0;
 
+        const rerollUpgradedDice = new Map()
+        let jokerWasApplied = false;
+
         while (index < this.diceInHand.length) {
             const die = this.diceInHand[index];
 
-            if(loopCount === 4 || index >= this.diceInHand.length) break
+            if(loopCount === 10 || index >= this.diceInHand.length) break
 
             if(die.element !== "currency") {
                 const rollResult = die.roll();
@@ -765,6 +779,12 @@ class GameSession {
                     }
                 }
 
+                if(die.upgrades.length >= 5 && !rerollUpgradedDice.get(index)) {
+                    rerollUpgradedDice.set(index, true)
+                    await message.reply(`:100: Dado mejorado al maximo, se vuelve a lanzar`)
+                    continue
+                }
+
                 results.push({ die, points: dicePoints, rollResult });
 
             } else {
@@ -791,6 +811,22 @@ class GameSession {
                     continue;
                 }
 
+            }
+
+            if(index + 1 === this.diceInHand.length && !jokerWasApplied) {
+                const joker = this.items.find(item => item.name === "Joker")
+                
+                if(joker) {
+                    const jokerResult = await joker.applyEffect({message, session: this})
+                    
+                    if(jokerResult) {
+                        jokerWasApplied = true;
+                        index = 0;
+                        loopCount++;
+                        results = [];
+                        continue;
+                    }
+                }
             }
 
             index++;
@@ -827,7 +863,7 @@ class GameSession {
     }
 
     getDiceWhitIndexIntText() {
-        const prettyUpgrates = [":one:", ":two:", ":three:", ":four:"]
+        const prettyUpgrates = [":one:", ":two:", ":three:", ":four:", ":100:"]
         return this.diceBag.map((dice, index) => {
             const elementText = dice.element ? ` (Elemento: ${dice.element})` : "";
             const upgradesText = dice.upgrades.length > 0 ? ` - Mejoras: ${prettyUpgrates[dice.upgrades.length - 1]}` : ""
@@ -927,7 +963,7 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
-            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga. Maximo 4 mejoras por dado`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga, si tiene elemento + 1. Maximo 4 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual mas inflacion: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
@@ -1041,7 +1077,7 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
-            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga. Maximo 4 mejoras por dado`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga, si tiene elemento + 1. Maximo 4 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual más inflación: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
@@ -1060,7 +1096,7 @@ class Shop {
 
         const die = session.diceBag[dieIndex]
 
-        const upgradePrice = 3 + die.upgrades.length
+        const upgradePrice = die.element ? 4 + die.upgrades.length : 3 + die.upgrades.length
 
         if (session.coins < upgradePrice) throw new Error("❌ No tienes suficientes monedas.");
         if (die.element === "currency") throw new Error("❌ No puedes mejorar una moneda.");
