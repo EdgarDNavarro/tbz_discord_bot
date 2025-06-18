@@ -627,7 +627,7 @@ class GameSession {
         const iceCount = this.diceInHand.filter(( dice ) => dice.element === "ice").length;
         if (iceCount > 0) {
             bonus += iceCount * 2;
-            await message.reply(`🧊 Bonus: ${iceCount} dado(s) de hielo → +${iceCount * 2} punto(s). 1 punto por cada dado de hielo`);
+            await message.reply(`🧊 Bonus: ${iceCount} dado(s) de hielo → +${iceCount * 3} punto(s). 3 punto por cada dado de hielo`);
         }
 
         this.roundTotalScore += bonus;
