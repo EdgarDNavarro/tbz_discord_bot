@@ -17,6 +17,7 @@ const shop = require('../commands/game/shop');
 const buy = require('../commands/game/buy');
 const reroll = require('../commands/game/reroll');
 const acariciar = require('../commands/game/acariciar');
+const upgrade = require('../commands/game/upgrade');
 
 const tbzhelp = require('../commands/tbzhelp');
 
@@ -41,6 +42,7 @@ async function handleMessageCreate(client, message) {
     if (message.content.startsWith('!buy')) return buy.run(message);
     if (message.content.startsWith('!reroll')) return reroll.run(message);
     if (message.content.startsWith('!acariciar')) return acariciar.run(message);
+    if (message.content.startsWith('!upgrade')) return upgrade.run(message);
 
     if (message.content.startsWith('!tbzhelp')) return tbzhelp.run(message);
     

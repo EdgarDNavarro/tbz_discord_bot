@@ -34,15 +34,24 @@ class Dice {
         this.sellingPrice = sellingPrice;
         this.element = element; // Ej: 'fire', 'water', null
         this.effect = effect
+        this.upgrades = []
     }
 
     roll() {
-        // Estrategia simple: número aleatorio dentro de faces
         const index = Math.floor(Math.random() * this.faces.length);
         const result = this.faces[index];
 
-        // Si la cara es función (efecto), ejecutarla, si no, valor simple
         return result;
+    }
+
+    upgradeFace() {
+        if(this.upgrades.length >= 4) return
+
+        const possibleUpgradeValues = [3, 4, 5, 6]
+        this.upgrades.push("+")
+        const index = Math.floor(Math.random() * this.faces.length);
+        const upgradeValue = possibleUpgradeValues[Math.floor(Math.random() * possibleUpgradeValues.length)]
+        this.faces[index] = this.faces[index] + upgradeValue
     }
 }
 
@@ -818,10 +827,12 @@ class GameSession {
     }
 
     getDiceWhitIndexIntText() {
+        const prettyUpgrates = [":one:", ":two:", ":three:", ":four:"]
         return this.diceBag.map((dice, index) => {
             const elementText = dice.element ? ` (Elemento: ${dice.element})` : "";
+            const upgradesText = dice.upgrades.length > 0 ? ` - Mejoras: ${prettyUpgrates[dice.upgrades.length - 1]}` : ""
 
-            return `#${index} - Tipo: ${dice.type}, Caras: ${dice.faces.join(", ")}${elementText}`;
+            return `#${index} - Tipo: ${dice.type}, Caras: ${dice.faces.join(", ")}${elementText} ${upgradesText}`;
 
         }).join("\n");
     }
@@ -874,7 +885,7 @@ class Shop {
 
         const haveShopInventory = session.currentShopInventory && session.currentShopInventory.length > 0;
         
-        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 3);
+        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 4);
         const randomItemsType = session.itemsTypes.sort(() => Math.random() - 0.5).slice(0, 3);
 
         const dice = haveShopInventory
@@ -916,6 +927,7 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga. Maximo 4 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual mas inflacion: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
@@ -983,7 +995,7 @@ class Shop {
 
     reroll(session, message) {
         const battle = session.currentBattle;
-        if(battle.currentRound !== 0 ) throw new Error("❌ Solo puedes usar el comando `!shop` cuando estas en la ronda 0");
+        if(battle.currentRound !== 0 ) throw new Error("❌ Solo puedes usar el comando `!reroll` cuando estas en la ronda 0");
 
         const shop = session.currentShopInventory;
         if (!shop || !Array.isArray(shop) || shop.length === 0) {
@@ -995,7 +1007,7 @@ class Shop {
         if(session.coins < costInflation) throw new Error(`❌ No tiene monedas suficiente. el reroll cuesta ${REROLL_COST} + inflacion: ${session.inflation}`);
         session.coins -= costInflation;
 
-        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 3);
+        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 4);
         const randomItemsType = session.itemsTypes.sort(() => Math.random() - 0.5).slice(0, 3);
 
         const dice = randomDiceTypes.map(type => ({
@@ -1029,11 +1041,33 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga. Maximo 4 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual más inflación: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
         session.inflation += 1;
         return message.reply(textoTienda);
+    }
+
+    async upgradeDieFace(session, message, dieIndex) {
+        const battle = session.currentBattle;
+        if(battle.currentRound !== 0 ) throw new Error("❌ Solo puedes usar el comando `!upgrade` cuando estas en la ronda 0");
+
+        const shop = session.currentShopInventory;
+        if (!shop || !Array.isArray(shop) || shop.length === 0) {
+            throw new Error("❌ No hay tienda activa. Usa `!shop` para ver opciones.");
+        }
+
+        const die = session.diceBag[dieIndex]
+
+        const upgradePrice = 3 + die.upgrades.length
+
+        if (session.coins < upgradePrice) throw new Error("❌ No tienes suficientes monedas.");
+        if (die.element === "currency") throw new Error("❌ No puedes mejorar una moneda.");
+        die.upgradeFace()
+        session.coins -= upgradePrice
+
+        await message.reply(`✅ Dado mejorado con exito.`)
     }
 }
 
