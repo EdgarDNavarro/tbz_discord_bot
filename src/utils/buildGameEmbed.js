@@ -8,7 +8,7 @@ function buildGameEmbed(session, username, extraFields = []) {
     const battle = session.currentBattle
     
     const itemsText = session.items.length
-        ? session.items.map(i => i.name).join(", ")
+        ? session.items.map((item, i) => `#${i} - ${item.name}`).join(", ")
         : "🎒 Ninguno";
 
     const statusText = {
