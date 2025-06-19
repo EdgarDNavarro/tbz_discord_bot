@@ -14,13 +14,16 @@ const DICE_TYPES = [
 
 const ITEMS_TYPES = [
     "doubleFire", 
-    "endurance",
     "gemelos",
     "reflejo",
     "contador",
     "ultimo",
     "boxeador",
-    "manodelmuerto"
+    "manodelmuerto",
+    "corazon",
+    "joker",
+    "hakael",
+    "congelador"
 ];
 
 const REROLL_COST = 3;
@@ -244,28 +247,21 @@ class ItemFactory {
     static createItem(name) {
         switch (name) {
             //beforeRoll
+            case "hakael":
+                return new Item("Hakael el gato", "beforeRoll", async ({ message, session }) => {
+                    const battle = session.currentBattle
+                    if(battle.currentRound === 0) {
+                        session.coins += 7
+                        await message.reply(`😼🤡 Inicio de la primera ronda! Hakael el gato payaso deja caer 7 monedas!`);
+                    }
+                    await message.reply(`😼🤡 Hakael el gato payaso: ¡El gato anda jodiendo por ahi, te da 15 puntos!`);
+                    return 15;
+                });
 
             //afterRoll
-            case "endurance":
-                return new Item("Endurance Medal", "afterRoll", async ({ total, session, message }) => {
-                    if (total > 15) {
-                        session.roundTotalScore += 5;
-                        await message.reply("🏅 Endurance Medal: +5 puntos por una ronda intensa.!");
-                        return 0;
-                    }
-                    return 0;
-                });
 
             //inRollFace
-            case "hakael":
-                return new Item("Hakael el gato", "inRollFace", async ({ message }) => {
-                    if (Math.random() < 0.5) {
 
-                        await message.reply(`😼🤡 hakael el gato payaso: ¡El gato anda jodiendo por ahi, no le prestes atencion!`);
-                        return 0;
-                    }
-                    return 0;
-                });
             case "reflejo":
                 return new Item("Reflejo", "inRollFace", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
                     //Probabiliad de 50% de que esa cara puntue dos veces
@@ -277,6 +273,7 @@ class ItemFactory {
                     }
                     return 0;
                 });
+
             case "corazon":
                 return new Item("Corazon de acero", "inRollFace", async ({ session, message }) => {
 
@@ -306,7 +303,7 @@ class ItemFactory {
                 return new Item("Gemelos", "inRollPoints", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
                     //si es multiplo de 2 mupltiplica por 2
                     if (rollResult % 2 === 0) {
-                        const extra = diePoints * 0.5;
+                        const extra = Math.ceil(diePoints * 0.5);
                         
                         await message.reply(`👯 Gemelos: ¡Multiplicaste el total del dado por 1.5! +${dieFace} puntos.!`);
                         return extra;
@@ -315,7 +312,7 @@ class ItemFactory {
                 });
 
             case "contador":
-                return new Item("Contador de la Mafia", "inRollPoints", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
+                return new Item("Contador de la Mafia", "inRollPoints", async ({ die, message }) => {
                     //Probabiliad de 50% de que esa cara puntue dos veces
                     const extra = die.faces.length * 0.5;
 
@@ -324,7 +321,7 @@ class ItemFactory {
                 });
             
             case "ultimo":
-                return new Item("El ultimo promogenito", "inRollPoints", async ({ message, session, index, diePoints }) => {
+                return new Item("El ultimo heredero", "inRollPoints", async ({ message, session, index, diePoints }) => {
                     if(session.diceInHand.length >= 2 && index === session.diceInHand.length - 1) {
                         const extra = diePoints
                         await message.reply(`👨‍👦 El ultimo heredero: ¡El ultimo dado se multiplica su total por 2! +${extra} puntos.!`);
@@ -368,6 +365,11 @@ class ItemFactory {
                     return false;
                 });
 
+            case "congelador":
+                return new Item("Congelador", "specials", async ({ message }) => {
+                    await message.reply(`:shaved_ice: Congelador: ¡Los Dados de hielo no se derriten`);
+                });
+
             default:
                 throw new Error("Item no soportado");
         }
@@ -395,7 +397,7 @@ class Battle {
     }
 
     coinsWonPerRound() {
-        return (this.maxRounds - this.currentRound) * 4
+        return (this.maxRounds - this.currentRound) * 6
     }
 }
 
@@ -404,6 +406,8 @@ class Battle {
 class GameSession {
     constructor(userId) {
         this.userId = userId;
+        this.scoreGrowthFactor = 0.2;
+
         this.diceBag = []; // Dados que tiene el jugador
         this.diceInHand = []; // Dados usados en la ronda
         this.dicePlayed = []; // Dados que ya se han jugado
@@ -428,15 +432,8 @@ class GameSession {
             new Battle(2, 50, 3),
             new Battle(3, 60, 3),
             new Battle(4, 80, 3),
-            new Battle(4, 100, 3),
-            new Battle(4, 150, 3),
-            new Battle(5, 200, 3),
-            new Battle(5, 250, 3),
-            new Battle(5, 300, 3),
-            new Battle(5, 450, 3),
-            new Battle(5, 600, 3),
-            new Battle(5, 800, 3),
-            new Battle(5, 1000, 3)
+            new Battle(5, 100, 3),
+            new Battle(6, 150, 3)
         ]
     }
 
@@ -469,22 +466,15 @@ class GameSession {
             new Battle(2, 50, 3),
             new Battle(3, 60, 3),
             new Battle(4, 80, 3),
-            new Battle(4, 100, 3),
-            new Battle(4, 150, 3),
-            new Battle(5, 200, 3),
-            new Battle(5, 250, 3),
-            new Battle(5, 300, 3),
-            new Battle(5, 450, 3),
-            new Battle(5, 600, 3),
-            new Battle(5, 800, 3),
-            new Battle(5, 1000, 3)
+            new Battle(5, 100, 3),
+            new Battle(6, 150, 3)
         ]
 
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D6"));
         this.addDiceFromBag(DiceFactory.createDice("D4"));
 
-        this.addItem(ItemFactory.createItem("joker"));
+        // this.addItem(ItemFactory.createItem("congelador"));
     }
 
     async resetFirstRound(message) {
@@ -514,6 +504,12 @@ class GameSession {
         }
     }
 
+    generateNextBattleFrom(score) {
+        const newTargetScore = Math.floor(score * (1 + this.scoreGrowthFactor));
+        const newBattleId = this.battles.length + 1;
+        return new Battle(newBattleId, newTargetScore, 3);
+    }
+
     async nextRound(message) {
         const battle = this.currentBattle;
         battle.nextRound();
@@ -527,42 +523,45 @@ class GameSession {
         if (battle.isOver()) {
             if (battle.isVictory(this.score)) {
                 this.currentBattleIndex++;
-                await this.resetFirstRound(message)
 
                 const coinsWonPerRound = battle.coinsWonPerRound()
                 const interest = Math.floor(coinsWonPerRound / 5);
                 const totalCoins = coinsWonPerRound + interest;
 
                 this.coins += totalCoins + 5;
-                await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + 5 de cortesía `)
+                await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + 5 de cortesía + intereses ${interest}`)
                 if (this.currentBattleIndex >= this.battles.length) {
-                    // Puedes generar más batallas o quedarte en la última
-                    await message.reply("🎉 ¡Superaste todas las batallas actuales!");
+                    const newBattle = this.generateNextBattleFrom(this.score);
+                    this.battles.push(newBattle);
+                    await message.reply(`🌀 Entraste en modo infinito. Se generó una nueva batalla con objetivo de ${newBattle.targetScore} puntos.`);
                 } else {
                     await message.reply(`✅ Superaste la batalla ${battle.id}. Comienza la batalla ${this.currentBattle.id}!`);
                 }
+
+                await this.resetFirstRound(message)
             } else {
                 this.status = "lost";
                 await message.reply("❌ Perdiste la batalla. No alcanzaste el puntaje requerido.");
             }
         }else if (battle.isVictory(this.score)) {
             this.currentBattleIndex++;
-            await this.resetFirstRound(message)
 
             const coinsWonPerRound = battle.coinsWonPerRound()
             const interest = Math.floor(coinsWonPerRound / 5);
             const totalCoins = coinsWonPerRound + interest;
 
             this.coins += totalCoins + 5;
-            await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + ${interest} + 5 de cortesía `)
+            await message.reply(`🪙 ganaste ${coinsWonPerRound} por las rondas sobrantes + 5 de cortesía + intereses ${interest}`)
 
             if (this.currentBattleIndex >= this.battles.length) {
-                // Puedes generar más batallas o quedarte en la última
-                
-                await message.reply("🎉 ¡Superaste todas las batallas actuales!");
+                const newBattle = this.generateNextBattleFrom(this.score);
+                this.battles.push(newBattle);
+                await message.reply(`🌀 Entraste en modo infinito. Se generó una nueva batalla con objetivo de ${newBattle.targetScore} puntos.`);
             } else {
                 await message.reply(`✅ Superaste la batalla ${battle.id}. Comienza la batalla ${this.currentBattle.id}!`);
             }
+
+            await this.resetFirstRound(message)
         }
     }
 
@@ -689,9 +688,13 @@ class GameSession {
 
         await this.applyCombinationsBeforeRolls(this.diceInHand, message)
 
-        this.items
-            .filter(item => item.type === "beforeRoll")
-            .forEach(item => item.applyEffect({ session: this, message }));
+        for (const item of this.items.filter(item => item.type === "beforeRoll")) {
+            const itemResult = await item.applyEffect({ session: this, total: this.roundTotalScore, message })
+
+            if (itemResult) {
+                this.roundTotalScore += itemResult;
+            }
+        }
 
         let index = 0;
         let loopCount = 0;
@@ -748,9 +751,15 @@ class GameSession {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
 
-                    die.effect()
+                    const congelador = this.items.find(item => item.name === "Congelador")
 
-                    await message.reply(`+ 🧊 Dado de hielo: Se empeiza a derretir, -1 punto en cada cara del dado`);
+                    if(!congelador) {
+                        die.effect()
+                        await message.reply(`+ 🧊 Dado de hielo: Se empeiza a derretir, -1 punto en cada cara del dado`);
+                    } else {
+                        await congelador.applyEffect({ session: this, message })
+                    }
+
                 } else if (die.element === "gold") {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
@@ -963,7 +972,7 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
-            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga, si tiene elemento + 1. Maximo 4 mejoras por dado`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 4 monedas + 1,5 (redondea para arriba siempre) por cada mejora que ya tenga, si tiene elemento 5 monedas + 2 por mejora. Maximo 5 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual mas inflacion: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
@@ -1077,7 +1086,7 @@ class Shop {
             }),
             ``,
             `Escribe \`!buy <número>\` para comprar uno.`,
-            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 3 monedas + 1 por cada mejora que ya tenga, si tiene elemento + 1. Maximo 4 mejoras por dado`,
+            `Escribe \`!upgrade <número de dado en bola>\` para para mejorar una cara al azar de ese dado. 💰 4 monedas + 1,5 (redondea para arriba siempre) por cada mejora que ya tenga, si tiene elemento 5 monedas + 2 por mejora. Maximo 5 mejoras por dado`,
             `Escribe \`!reroll\` para hacer reroll de la tienda. Coste actual más inflación: ${REROLL_COST + session.inflation}`,
             `Escribe \`!acariciar\` para darle cariño a la mascota de la tienda Hakael el gato 🐈`,
         ].join("\n");
@@ -1096,7 +1105,15 @@ class Shop {
 
         const die = session.diceBag[dieIndex]
 
-        const upgradePrice = die.element ? 4 + die.upgrades.length : 3 + die.upgrades.length
+        let upgradePrice = 0
+
+        if(die.element) {
+            upgradePrice = 5 + (die.upgrades.length * 2)
+        }
+
+        if(!die.element) {
+            upgradePrice = 4 + Math.ceil(die.upgrades.length * 1.5)
+        }
 
         if (session.coins < upgradePrice) throw new Error("❌ No tienes suficientes monedas.");
         if (die.element === "currency") throw new Error("❌ No puedes mejorar una moneda.");
