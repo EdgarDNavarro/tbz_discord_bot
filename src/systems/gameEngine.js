@@ -78,7 +78,7 @@ class DiceFactory {
                     10,
                     4,
                     "fire",
-                    (acc) => Math.ceil(acc * 0.5)
+                    (acc) => Math.ceil(acc * 0.2)
                 );
             case "fireD6":
                 return new Dice(
@@ -87,7 +87,7 @@ class DiceFactory {
                     11,
                     4,
                     "fire",
-                    (acc) => Math.ceil(acc * 0.5)
+                    (acc) => Math.ceil(acc * 0.2)
                 );
             case "fireD8":
                 return new Dice(
@@ -96,7 +96,7 @@ class DiceFactory {
                     12,
                     5,
                     "fire",
-                    (acc) => Math.ceil(acc * 0.5)
+                    (acc) => Math.ceil(acc * 0.2)
                 );
             case "+D4":
                 return new Dice("+D4", [3, 4, 5, 6], 6, 2);
@@ -309,7 +309,7 @@ class ItemFactory {
             case "doubleFire":
                 return new Item("Double Fire", "inRollPoints", "doubleFire", async ({ die, total, message }) => {
                     if (die.element === "fire") {
-                        const extra = Math.ceil(total * 0.5);
+                        const extra = Math.ceil(total * 0.2);
                         await message.reply(`🔥 Double Fire: ¡El fuego arde más fuerte! +${extra} puntos extra.!`);
                         return extra;
                     }
@@ -429,7 +429,7 @@ class Battle {
 class GameSession {
     constructor(userId) {
         this.userId = userId;
-        this.scoreGrowthFactor = 0.1;
+        this.scoreGrowthFactor = 0.15;
 
         this.diceBag = []; // Dados que tiene el jugador
         this.diceInHand = []; // Dados usados en la ronda
@@ -763,7 +763,7 @@ class GameSession {
 
                     this.roundTotalScore += effectResult;
                     dicePoints += effectResult;
-                    await message.reply(`+ 🔥 Fuego: Mitad del total de la ronda: ${effectResult}`);
+                    await message.reply(`+ 🔥 Fuego: el 0,2 del total de la ronda: ${effectResult}`);
                 } else if (die.element === "undead") {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
