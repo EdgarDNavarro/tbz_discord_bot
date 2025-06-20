@@ -1,5 +1,13 @@
 const { buildGameEmbed } = require("../utils/buildGameEmbed.js");
 
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1)); 
+            [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
+
 const DICE_TYPES = [
     "D4", "D6", "D8", "D20",
     "fireD4", "fireD6", "fireD8",
@@ -24,7 +32,9 @@ const ITEMS_IDENTIFIER = [
     "joker",
     "hakael",
     "congelador",
-    "guante"
+    "guante",
+    "mediopalo",
+    "ingeniero"
 ];
 
 const REROLL_COST = 3;
@@ -317,12 +327,24 @@ class ItemFactory {
                 });
 
             case "gemelos":
-                return new Item("Gemelos", "inRollPoints", "gemelos", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
+                return new Item("Gemelos", "inRollPoints", "gemelos", async ({ dieFace, diePoints, message, rollResult }) => {
                     //si es multiplo de 2 mupltiplica por 2
                     if (rollResult % 2 === 0) {
                         const extra = Math.ceil(diePoints * 0.5);
                         
-                        await message.reply(`👯 Gemelos: ¡Multiplicaste el total del dado por 1.5! +${dieFace} puntos.!`);
+                        await message.reply(`👯 Gemelos: ¡Multiplicaste el total del dado por 1.5! +${extra} puntos.!`);
+                        return extra;
+                    }
+                    return 0;
+                });
+
+            case "mediopalo":
+                return new Item("Medio Palo", "inRollPoints", "gemelos", async ({ dieFace, diePoints, message, rollResult }) => {
+                    //si es multiplo de 2 mupltiplica por 2
+                    if (rollResult % 2 !== 0) {
+                        const extra = Math.ceil(diePoints * 0.5);
+                        
+                        await message.reply(`:wood: Medio Palo: ¡Multiplicaste el total del dado por 1.5! +${extra} puntos.!`);
                         return extra;
                     }
                     return 0;
@@ -330,10 +352,9 @@ class ItemFactory {
 
             case "contador":
                 return new Item("Contador de la Mafia", "inRollPoints", "contador", async ({ die, message }) => {
-                    //Probabiliad de 50% de que esa cara puntue dos veces
-                    const extra = die.faces.length * 0.5;
+                    const extra = die.faces.length
 
-                    await message.reply(`🧾 Contador de la Mafia: ¡+0,5 punto por cada cara del dado! +${extra} puntos.!`);
+                    await message.reply(`🧾 Contador de la Mafia: ¡+1 punto por cada cara del dado! +${extra} puntos.!`);
                     return extra;
                 });
             
@@ -391,6 +412,18 @@ class ItemFactory {
                 return new Item("Guante de Cirujano", "specials", "guante", async ({ message, session }) => {
                     session.limitDiceRound += 1
                     await message.reply(`:gloves: Guante de Cirujano: ¡Puedes lanzar un dado mas en cada ronda!`);
+                    return 0;
+                });
+            case "ingeniero":
+                return new Item("Ingeniero de la Central", "specials", "guante", async ({ message, session }) => {
+                    let index = Math.floor(Math.random() * session.diceBag.length);
+                    let die = session.diceBag[index]
+                    if(die.upgrades.length >= 5) {
+                        index = Math.floor(Math.random() * session.diceBag.length);
+                        die = session.diceBag[index]
+                    }
+                    die.upgradeFace()
+                    await message.reply(`:man_mechanic: Ingeniero de la Central: ¡Te acaban de mejorar el dado ${die.type} al azar!`);
                     return 0;
                 });
             default:
@@ -457,7 +490,8 @@ class GameSession {
             new Battle(3, 60, 3),
             new Battle(4, 80, 3),
             new Battle(5, 100, 3),
-            new Battle(6, 150, 3)
+            new Battle(6, 150, 3),
+            new Battle(7, 250, 3)
         ]
     }
 
@@ -473,7 +507,7 @@ class GameSession {
         this.itemsLimit = 5; 
         this.itemStacks = {}; 
         this.score = 0;
-        this.coins = 10;
+        this.coins = 1000;
         this.inflation = 0;
         this.currentShopInventory = [];
         this.status = "playing"; // 'playing', 'lost', 'won'
@@ -492,7 +526,8 @@ class GameSession {
             new Battle(3, 60, 3),
             new Battle(4, 80, 3),
             new Battle(5, 100, 3),
-            new Battle(6, 150, 3)
+            new Battle(6, 150, 3),
+            new Battle(7, 250, 3)
         ]
 
         this.addDiceFromBag(DiceFactory.createDice("D6"));
@@ -512,8 +547,12 @@ class GameSession {
         this.currentShopInventory = [];
 
         const boxeador = this.items.find(item => item.identifier === "boxeador")
+        const ingeniero = this.items.find(item => item.identifier === "ingeniero")
         if(boxeador) {
             await boxeador.applyEffect({message, session: this})
+        }
+        if(ingeniero) {
+            await ingeniero.applyEffect({message, session: this})
         }
     }
 
@@ -541,7 +580,7 @@ class GameSession {
 
         const corazon = this.items.find(item => item.identifier === "corazon")
         if(corazon) {
-            this.itemStacks.corazon += 1;
+            this.itemStacks.corazon += 2;
             await message.reply("💔 ¡CLING! Explotaste un corazon, una carga mas para el ❤️‍🔥 Corazon de acero!");
         }
 
@@ -956,8 +995,10 @@ class Shop {
 
         const haveShopInventory = session.currentShopInventory && session.currentShopInventory.length > 0;
         
-        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 4);
-        const randomItemsIdentifier = session.itemsIdentifier.sort(() => Math.random() - 0.5).slice(0, 3);
+        const diceShuffled = shuffle(DICE_TYPES.slice());
+        const itemsShuffled = shuffle(session.itemsIdentifier.slice());
+        const randomDiceTypes = diceShuffled.slice(0, 4);
+        const randomItemsIdentifier = itemsShuffled.slice(0, 3);
 
         const dice = haveShopInventory
             ? session.currentShopInventory.filter(x => x.kind === "die")
@@ -1054,7 +1095,7 @@ class Shop {
             session.addItem(createdItem);
             session.currentShopInventory.splice(index, 1);
 
-            if(item.identifier === "boxeador" || item.identifier === "guante" || item.identifier === "manodelmuerto") {
+            if(item.identifier === "boxeador" || item.identifier === "guante" || item.identifier === "manodelmuerto" || item.identifier === "ingeniero") {
                 await createdItem.applyEffect({message, session})
             }
 
@@ -1104,8 +1145,10 @@ class Shop {
         if(session.coins < costInflation) throw new Error(`❌ No tiene monedas suficiente. el reroll cuesta ${REROLL_COST} + inflacion: ${session.inflation}`);
         session.coins -= costInflation;
 
-        const randomDiceTypes = DICE_TYPES.sort(() => Math.random() - 0.5).slice(0, 4);
-        const randomItemsIdentifier = session.itemsIdentifier.sort(() => Math.random() - 0.5).slice(0, 3);
+        const diceShuffled = shuffle(DICE_TYPES.slice());
+        const itemsShuffled = shuffle(session.itemsIdentifier.slice());
+        const randomDiceTypes = diceShuffled.slice(0, 4);
+        const randomItemsIdentifier = itemsShuffled.slice(0, 3);
 
         const dice = randomDiceTypes.map(type => ({
             kind: "die",
