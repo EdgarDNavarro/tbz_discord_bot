@@ -1,4 +1,5 @@
 const { buildGameEmbed } = require("../utils/buildGameEmbed.js");
+const { default: RandomManager } = require("./RandomManager.js");
 
 function shuffle(array) {
     for (let i = array.length - 1; i > 0; i--) {
@@ -51,8 +52,8 @@ class Dice {
         this.upgrades = []
     }
 
-    roll() {
-        const index = Math.floor(Math.random() * this.faces.length);
+    roll(rng) {
+        const index = Math.floor(rng.getRandom() * this.faces.length);
         const result = this.faces[index];
 
         return result;
@@ -404,8 +405,19 @@ class ItemFactory {
                 });
 
             case "congelador":
-                return new Item("Congelador", "specials", "congelador", async ({ message }) => {
-                    await message.reply(`:shaved_ice: Congelador: ¡Los Dados de hielo no se derriten!`);
+                return new Item("Congelador", "specials", "congelador", async ({ message, die }) => {
+                    let textMessage = `:shaved_ice: Congelador: ¡Los Dados de hielo no se derriten!`
+                    if (Math.random() < 0.7) {
+                        if(die.upgrades.length < 5) {
+                            die.upgradeFace()
+                            textMessage += ` :up: Dado ${die.type} mejorado!!`
+                        } else {
+                            textMessage += " :up: Dado mejorado al maximo, no se puede mejorar mas"
+                        }
+                        
+                    }
+                    
+                    await message.reply(textMessage);
                 });
 
             case "guante":
@@ -415,7 +427,7 @@ class ItemFactory {
                     return 0;
                 });
             case "ingeniero":
-                return new Item("Ingeniero de la Central", "specials", "guante", async ({ message, session }) => {
+                return new Item("Ingeniero de la Central", "specials", "ingeniero", async ({ message, session }) => {
                     let index = Math.floor(Math.random() * session.diceBag.length);
                     let die = session.diceBag[index]
                     if(die.upgrades.length >= 5) {
@@ -462,6 +474,7 @@ class Battle {
 class GameSession {
     constructor(userId) {
         this.userId = userId;
+        this.rng = null;
         this.scoreGrowthFactor = 0.15;
 
         this.diceBag = []; // Dados que tiene el jugador
@@ -500,6 +513,7 @@ class GameSession {
     }
 
     initGame() {
+        this.rng = new RandomManager()
         this.diceBag = []; // Dados que tiene el jugador
         this.diceInHand = []; // Dados usados en la ronda
         this.dicePlayed = []; // Dados que ya se han jugado
@@ -507,7 +521,7 @@ class GameSession {
         this.itemsLimit = 5; 
         this.itemStacks = {}; 
         this.score = 0;
-        this.coins = 1000;
+        this.coins = 10;
         this.inflation = 0;
         this.currentShopInventory = [];
         this.status = "playing"; // 'playing', 'lost', 'won'
@@ -772,7 +786,7 @@ class GameSession {
             if(loopCount === 10 || index >= this.diceInHand.length) break
 
             if(die.element !== "currency") {
-                const rollResult = die.roll();
+                const rollResult = die.roll(this.rng);
                 await message.reply(`🎲 Tiraste el dado ${die.type} y cayo: ${rollResult}`);
                 let dicePoints = 0;
                 let dieFace = rollResult
@@ -821,7 +835,7 @@ class GameSession {
                         die.effect()
                         await message.reply(`+ 🧊 Dado de hielo: Se empeiza a derretir, -1 punto en cada cara del dado`);
                     } else {
-                        await congelador.applyEffect({ session: this, message })
+                        await congelador.applyEffect({ session: this, message, die })
                     }
 
                 } else if (die.element === "gold") {
@@ -862,7 +876,7 @@ class GameSession {
 
             } else {
                 const currency = die;
-                const tossResult = currency.roll();
+                const tossResult = currency.roll(this.rng);
                 await message.reply(`🪙 Tiraste la moneda ${currency.type} y cayo: ${tossResult ? "Cara, Que Suerte🍀!" : "Sello, Mala suerte sorry 😕"}`);
 
                 if(!tossResult) {
@@ -995,8 +1009,8 @@ class Shop {
 
         const haveShopInventory = session.currentShopInventory && session.currentShopInventory.length > 0;
         
-        const diceShuffled = shuffle(DICE_TYPES.slice());
-        const itemsShuffled = shuffle(session.itemsIdentifier.slice());
+        const diceShuffled = session.rng.shuffle(DICE_TYPES);
+        const itemsShuffled = session.rng.shuffle(session.itemsIdentifier);
         const randomDiceTypes = diceShuffled.slice(0, 4);
         const randomItemsIdentifier = itemsShuffled.slice(0, 3);
 
@@ -1145,8 +1159,8 @@ class Shop {
         if(session.coins < costInflation) throw new Error(`❌ No tiene monedas suficiente. el reroll cuesta ${REROLL_COST} + inflacion: ${session.inflation}`);
         session.coins -= costInflation;
 
-        const diceShuffled = shuffle(DICE_TYPES.slice());
-        const itemsShuffled = shuffle(session.itemsIdentifier.slice());
+        const diceShuffled = session.rng.shuffle(DICE_TYPES);
+        const itemsShuffled = session.rng.shuffle(session.itemsIdentifier);
         const randomDiceTypes = diceShuffled.slice(0, 4);
         const randomItemsIdentifier = itemsShuffled.slice(0, 3);
 
