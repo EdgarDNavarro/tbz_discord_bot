@@ -1,21 +1,13 @@
 const { buildGameEmbed } = require("../utils/buildGameEmbed.js");
 const { default: RandomManager } = require("./RandomManager.js");
 
-function shuffle(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1)); 
-            [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-}
-
 const DICE_TYPES = [
     "D4", "D6", "D8", "D20",
     "fireD4", "fireD6", "fireD8",
     "+D4", "+D6", "+D8",
     "undeadD4", "undeadD6", "undeadD8",
     "iceD4", "iceD6", "iceD8",
-    "goldD4", "goldD6",
+    "goldD4", "goldD6", "goldD8",
 
     //Curency
     "euro", "peso"
@@ -59,13 +51,13 @@ class Dice {
         return result;
     }
 
-    upgradeFace() {
+    upgradeFace(rng) {
         if(this.upgrades.length >= 5) return
 
         const possibleUpgradeValues = [3, 4, 5, 6]
         this.upgrades.push("+")
-        const index = Math.floor(Math.random() * this.faces.length);
-        const upgradeValue = possibleUpgradeValues[Math.floor(Math.random() * possibleUpgradeValues.length)]
+        const index = Math.floor(rng.getRandom() * this.faces.length);
+        const upgradeValue = rng.pickOne(possibleUpgradeValues)
         this.faces[index] = this.faces[index] + upgradeValue
     }
 }
@@ -122,7 +114,7 @@ class DiceFactory {
                     6,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 1) * 2
+                    (playedDice) => (playedDice + 2) * 2
                 );
             case "undeadD6":
                 return new Dice(
@@ -131,7 +123,7 @@ class DiceFactory {
                     7,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 1) * 2
+                    (playedDice) => (playedDice + 2) * 2
                 );
             case "undeadD8":
                 return new Dice(
@@ -140,7 +132,7 @@ class DiceFactory {
                     7,
                     3,
                     "undead",
-                    (playedDice) => (playedDice + 1) * 2
+                    (playedDice) => (playedDice + 2) * 2
                 );
             case "iceD4":
                 return new Dice(
@@ -182,8 +174,8 @@ class DiceFactory {
                     8,
                     3,
                     "gold",
-                    (session, face) => {
-                        if (Math.random() < 0.5) {
+                    (session, face, rng) => {
+                        if (rng.chance(0.5)) {
                             session.coins += face
                             return true
                         }
@@ -197,8 +189,8 @@ class DiceFactory {
                     8,
                     3,
                     "gold",
-                    (session, face) => {
-                        if (Math.random() < 0.5) {
+                    (session, face, rng) => {
+                        if (rng.chance(0.5)) {
                             session.coins += face
                             return true
                         }
@@ -212,8 +204,8 @@ class DiceFactory {
                     8,
                     3,
                     "gold",
-                    (session, face) => {
-                        if (Math.random() < 0.5) {
+                    (session, face, rng) => {
+                        if (rng.chance(0.5)) {
                             session.coins += face
                             return true
                         }
@@ -291,9 +283,9 @@ class ItemFactory {
             //inRollFace
 
             case "reflejo":
-                return new Item("Reflejo", "inRollFace", "reflejo", async ({ die, dieFace, total, session, diePoints, message, rollResult }) => {
+                return new Item("Reflejo", "inRollFace", "reflejo", async ({ dieFace, message, rng }) => {
                     //Probabiliad de 50% de que esa cara puntue dos veces
-                    if (Math.random() < 0.5) {
+                    if (rng.chance(0.5)) {
                         const extra = dieFace;
 
                         await message.reply(`🔮 Reflejo: ¡La cara de tu dado puntúa dos veces! +${extra} puntos a la cara.!`);
@@ -328,7 +320,7 @@ class ItemFactory {
                 });
 
             case "gemelos":
-                return new Item("Gemelos", "inRollPoints", "gemelos", async ({ dieFace, diePoints, message, rollResult }) => {
+                return new Item("Gemelos", "inRollPoints", "gemelos", async ({ diePoints, message, rollResult }) => {
                     //si es multiplo de 2 mupltiplica por 2
                     if (rollResult % 2 === 0) {
                         const extra = Math.ceil(diePoints * 0.5);
@@ -340,7 +332,7 @@ class ItemFactory {
                 });
 
             case "mediopalo":
-                return new Item("Medio Palo", "inRollPoints", "gemelos", async ({ dieFace, diePoints, message, rollResult }) => {
+                return new Item("Medio Palo", "inRollPoints", "gemelos", async ({ diePoints, message, rollResult }) => {
                     //si es multiplo de 2 mupltiplica por 2
                     if (rollResult % 2 !== 0) {
                         const extra = Math.ceil(diePoints * 0.5);
@@ -405,11 +397,11 @@ class ItemFactory {
                 });
 
             case "congelador":
-                return new Item("Congelador", "specials", "congelador", async ({ message, die }) => {
+                return new Item("Congelador", "specials", "congelador", async ({ message, die, rng }) => {
                     let textMessage = `:shaved_ice: Congelador: ¡Los Dados de hielo no se derriten!`
-                    if (Math.random() < 0.7) {
+                    if (rng.chance(0.7)) {
                         if(die.upgrades.length < 5) {
-                            die.upgradeFace()
+                            die.upgradeFace(rng)
                             textMessage += ` :up: Dado ${die.type} mejorado!!`
                         } else {
                             textMessage += " :up: Dado mejorado al maximo, no se puede mejorar mas"
@@ -427,14 +419,13 @@ class ItemFactory {
                     return 0;
                 });
             case "ingeniero":
-                return new Item("Ingeniero de la Central", "specials", "ingeniero", async ({ message, session }) => {
-                    let index = Math.floor(Math.random() * session.diceBag.length);
-                    let die = session.diceBag[index]
+                return new Item("Ingeniero de la Central", "specials", "ingeniero", async ({ message, session, rng }) => {
+                    
+                    let die = rng.pickOne(session.diceBag);
                     if(die.upgrades.length >= 5) {
-                        index = Math.floor(Math.random() * session.diceBag.length);
-                        die = session.diceBag[index]
+                        die = rng.pickOne(session.diceBag);
                     }
-                    die.upgradeFace()
+                    die.upgradeFace(rng)
                     await message.reply(`:man_mechanic: Ingeniero de la Central: ¡Te acaban de mejorar el dado ${die.type} al azar!`);
                     return 0;
                 });
@@ -764,10 +755,12 @@ class GameSession {
 
         let results = []; 
 
+        const { rng } = this;
+
         await this.applyCombinationsBeforeRolls(this.diceInHand, message)
 
         for (const item of this.items.filter(item => item.type === "beforeRoll")) {
-            const itemResult = await item.applyEffect({ session: this, total: this.roundTotalScore, message })
+            const itemResult = await item.applyEffect({ session: this, total: this.roundTotalScore, message, rng });
 
             if (itemResult) {
                 this.roundTotalScore += itemResult;
@@ -786,7 +779,7 @@ class GameSession {
             if(loopCount === 10 || index >= this.diceInHand.length) break
 
             if(die.element !== "currency") {
-                const rollResult = die.roll(this.rng);
+                const rollResult = die.roll(rng);
                 await message.reply(`🎲 Tiraste el dado ${die.type} y cayo: ${rollResult}`);
                 let dicePoints = 0;
                 let dieFace = rollResult
@@ -800,6 +793,7 @@ class GameSession {
                         diePoints: dicePoints,
                         message,
                         rollResult,
+                        rng
                     });
 
                     if (itemResult) {
@@ -824,7 +818,7 @@ class GameSession {
                     const effectResult = die.effect(this.dicePlayed.length)
                     this.roundTotalScore += effectResult;
                     dicePoints += effectResult;
-                    await message.reply(`+ 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados + 1: ${this.dicePlayed.length} + 1 * 2 = ${effectResult}`);
+                    await message.reply(`+ 👻 No Muerto: Multiplica por 2 la cantidad de dados jugados + 2. ${this.dicePlayed.length} + 2 * 2 = ${effectResult}`);
                 } else if (die.element === "ice") {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
@@ -835,14 +829,14 @@ class GameSession {
                         die.effect()
                         await message.reply(`+ 🧊 Dado de hielo: Se empeiza a derretir, -1 punto en cada cara del dado`);
                     } else {
-                        await congelador.applyEffect({ session: this, message, die })
+                        await congelador.applyEffect({ session: this, message, die, rng })
                     }
 
                 } else if (die.element === "gold") {
                     dicePoints += dieFace;
                     this.roundTotalScore += dieFace;
 
-                    const luck = die.effect(this, dieFace)
+                    const luck = die.effect(this, dieFace, this.rng)
 
                     if(luck) {
                         await message.reply(`🪙 Dado de oro: La cara del dado se convierte en oro! +${dieFace} monedas`);
@@ -858,7 +852,7 @@ class GameSession {
                 }
 
                 for (const item of this.items.filter(item => item.type === "inRollPoints")) {
-                    const itemResult = await item.applyEffect({ session: this, die, dieFace, total: this.roundTotalScore, diePoints: dicePoints, message, rollResult, index });
+                    const itemResult = await item.applyEffect({ session: this, die, dieFace, total: this.roundTotalScore, diePoints: dicePoints, message, rollResult, index, rng });
 
                     if (itemResult) {
                         this.roundTotalScore += itemResult;
@@ -876,7 +870,7 @@ class GameSession {
 
             } else {
                 const currency = die;
-                const tossResult = currency.roll(this.rng);
+                const tossResult = currency.roll(rng);
                 await message.reply(`🪙 Tiraste la moneda ${currency.type} y cayo: ${tossResult ? "Cara, Que Suerte🍀!" : "Sello, Mala suerte sorry 😕"}`);
 
                 if(!tossResult) {
@@ -904,7 +898,7 @@ class GameSession {
                 const joker = this.items.find(item => item.identifier === "joker")
                 
                 if(joker) {
-                    const jokerResult = await joker.applyEffect({message, session: this})
+                    const jokerResult = await joker.applyEffect({message, session: this, rng})
                     
                     if(jokerResult) {
                         jokerWasApplied = true;
@@ -924,7 +918,7 @@ class GameSession {
         this.roundTotalScore += bonus;
 
         for (const item of this.items.filter(item => item.type === "afterRoll")) {
-            await item.applyEffect({ session: this, total: this.roundTotalScore, message })
+            await item.applyEffect({ session: this, total: this.roundTotalScore, message, rng })
         }
 
         this.score += this.roundTotalScore;
@@ -1227,7 +1221,7 @@ class Shop {
 
         if (session.coins < upgradePrice) throw new Error("❌ No tienes suficientes monedas.");
         if (die.element === "currency") throw new Error("❌ No puedes mejorar una moneda.");
-        die.upgradeFace()
+        die.upgradeFace(session.rng)
         session.coins -= upgradePrice
 
         await message.reply(`✅ Dado mejorado con exito.`)

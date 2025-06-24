@@ -33,6 +33,16 @@ function buildGameEmbed(session, username, extraFields = []) {
             value: `${battle.currentRound} / ${battle.maxRounds}`,
             inline: true,
         },
+        {
+            name: ":fist: Tamaño de mano",
+            value: `${session.diceInHand.length} / ${session.limitDiceRound}`,
+            inline: true,
+        },
+        {
+            name: ":seedling: Seed",
+            value: `${session.rng.seed}`,
+            inline: false,
+        },
     ];
 
     const customSeparator = extraFields.length
